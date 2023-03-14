@@ -765,7 +765,7 @@ corplotfunct = function(data){
                          name="Pearson\nCorrelation") +
     theme_minimal()+ 
     theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-                                     size = 12, hjust = 1))+
+                                     size = 10, hjust = 1))+
     coord_fixed()
   
   
@@ -791,7 +791,7 @@ corplotfunct = function(data){
                          name="Spearman\nCorrelation") +
     theme_minimal()+ # minimal theme
     theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-                                     size = 12, hjust = 1))+
+                                     size = 10, hjust = 1))+
     coord_fixed()
   # Print the heatmap
   print(ggheatmap)

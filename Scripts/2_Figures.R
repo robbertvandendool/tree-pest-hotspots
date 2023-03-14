@@ -4,9 +4,10 @@
 # Used to generate the figures shown in the manuscript. 
 # run 1_Analysis.R first. 
 
-insectasub = insectaalldata[1:(nrow(insectaalldata)-nrow(background)),]
-lepidopterasub = lepidopteraalldata[1:(nrow(lepidopteraalldata)-nrow(background)),]
+#insectasub = insectaalldata[1:(nrow(insectaalldata)-nrow(background)),]
+#lepidopterasub = lepidopteraalldata[1:(nrow(lepidopteraalldata)-nrow(background)),]
 
+packages("cowplot", "ggplotify", "grid", "gridExtra", prompt=FALSE)
 
 
 #Namesconvert function 
@@ -222,11 +223,11 @@ europe <- ne_countries(continent='europe', scale = "medium", returnclass = "sf")
 europe_eu <- st_transform(europe, crs=3035)
 
 
-NUTS2_2016 <- readOGR(here("C:/Users/robbe/OneDrive - WageningenUR/Ch1 Establishment areas/Data_Intermediate/NUTS2_2016_v3.shp"))
+NUTS2_2016 <- readOGR("Intermediate/NUTS2_2016_v3.shp")
 NUTS2_2016sf <- st_as_sf(NUTS2_2016)
 NUTS2_2016sf <- st_transform(NUTS2_2016sf, crs=3035)
 
-tiff("Run8_Figure2_pointsmap.tiff", width = 5, height = 4, units = 'in', res = 600)
+tiff("Output/Figure1.tiff", width = 5, height = 4, units = 'in', res = 900, compression="lzw")
 ggplot()+
   geom_sf(data=europe_eu)+
   theme_minimal()+
@@ -240,11 +241,11 @@ dev.off()
 #### Figure 2
 ####
 
-#Fig 2 performance 
-allresults_fig3 = allresults
-allresults_fig3[!rownames(allresults_fig3) %in% c("frstcvr", "NrCty_DLOG", "43"),]
+#plot1
+allresults_fig2 = allresults
+allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),]
 
-plotdataframe = allresults_fig3[!rownames(allresults_fig3) %in% c("frstcvr", "NrCty_DLOG", "43"),]
+plotdataframe = allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),]
 
 newrownames = unlist(sapply(rownames(plotdataframe), nameconvertfunct2))
 names(newrownames) = NULL
@@ -287,8 +288,8 @@ pmodel = subfinalpresmod
 bmodel = subukde_back
 repeats = 50
 prefix = "run7_sub1_4Dec2022"
-origAUC = sub_perf[[2]]
-origNLLp = sub_perf[[1]]
+origAUC = 1
+origNLLp = 1
 
 #Calculate VarImp
 VarImp = future_map(varnames,.options = furrr::furrr_options(seed = TRUE),function(x) permutevarFinal(presdata = presdata, backdata = backdata, pmodel = pmodel, bmodel = bmodel, variable = x,repeats = repeats))
@@ -339,26 +340,17 @@ plot2 = ggplot(VarImp_ggplotdf, aes(x=value, y=variable, fill=value)) +
         axis.text.y = element_text(size = 11, colour = "black"))
 
 
-packages("cowplot")
-packages("ggplotify")
-packages("grid", "gridExtra")
 
-
-tiff("Run8v2_Figure3_performanceimportance_.tiff", width = 11, height = 7, units = 'in', res = 1500, compression="lzw")
+tiff("Output/Figure2.tiff", width = 11, height = 7, units = 'in', res = 1500, compression="lzw")
 plot_grid(plot1, plot2, labels = c('A)', 'B)'), nrow=1, label_size = 12, align = "hv", axis = "b", rel_widths = c(1, 1.3)) 
 dev.off()
-#plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, plot7, labels = c('A: bio1', 'B: bio7', 'C: bio12', 'D: bio16', 'E: bio5', 'F: bio6', 'G: bio8'), nrow=2, label_size = 12, align = "hv") 
 
 
-###
-### Figure 3
-### #density functions.
-#requires new function for plotting. May need to be in two parts. 
-#requires all models complete 
+####
+#### Figure 3
+####
 
 #16 plot components
-
-
 #Fig 3 = selection of most important variables
 #appendix -> remaining density plots. 
 
@@ -401,7 +393,8 @@ Ch3_densplotgenerator = function(variable, legend=F, customxlim=NA, density=F){
     ylab="Density"
   }
   
-  #eval(parse(text = *))
+
+  
 plotf = function(){
   curve(finalpresmod[[variable]](x), xlim= xlim, ylim=c(0,ymax),ylab=ylab, xlab=xlab, axes=F,frame.plot=TRUE, col="green", lwd=2, lty=2)
   Axis(side=1, labels=T)
@@ -418,8 +411,6 @@ plotf = function(){
 return(plotf)
 }
 
-#Ch3_densplotgenerator("WoodUnits", legend=T)()
-#Figure 3
 plot1 = Ch3_densplotgenerator("WoodUnits", legend=T, density=F)
 plot1 = as.grob(plot1)
 
@@ -444,8 +435,7 @@ plot7 = as.grob(plot7)
 plot8 = Ch3_densplotgenerator("POPD") #in terms of importance should be the 10th plot, not 8th.
 plot8 = as.grob(plot8)
 
-
-tiff("Run8_Figure4_densityplots_.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
+tiff("Output/Figure3.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
 plot = plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8, 
           nrow=2, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
           labels = c(paste('A)', nameconvertfunct3("WoodUnits")),
@@ -464,61 +454,12 @@ y.grob <- textGrob("Density",
 grid.arrange(arrangeGrob(plot, left = "Density"))
 dev.off()
 
-#appendix figure
-plot9 = Ch3_densplotgenerator("BIO11", legend=T) 
-plot9 = as.grob(plot9)
-
-plot10 = Ch3_densplotgenerator("NrArp_D") 
-plot10 = as.grob(plot10)
-
-plot11 = Ch3_densplotgenerator("NrPrt_D") #Distance to n. port
-plot11 = as.grob(plot11)
-
-plot12 = Ch3_densplotgenerator("OrPlHa") #Ornamental plants cover
-plot12 = as.grob(plot12)
-
-plot13 = Ch3_densplotgenerator("ACrpHa") #Crop cover
-plot13 = as.grob(plot13)
-
-plot14 = Ch3_densplotgenerator("SR", legend=T) #Tree Species Richness
-plot14 = as.grob(plot14)
-
-plot15 = Ch3_densplotgenerator("GDPp") #GDP per capita
-plot15 = as.grob(plot15)
-
-plot16 = Ch3_densplotgenerator("BIO15") #Prec. seasonality
-plot16 = as.grob(plot16)
-
-plot17 = Ch3_densplotgenerator("AFrghtU") #Air freight
-plot17 = as.grob(plot17)
-
-tiff("Run8_Appendix_densityplots2.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
-plot = plot_grid(plot9, plot10, plot11, plot12, plot13, plot14, plot15, plot16, plot17,
-                 nrow=2, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
-                 labels = c(paste('A)', nameconvertfunct3("BIO11")),
-                            paste('B)', nameconvertfunct3("NrArp_D")),
-                            paste('C)', nameconvertfunct3("NrPrt_D")),
-                            paste('D)', nameconvertfunct3("OrPlHa")),
-                            paste('E)', nameconvertfunct3("ACrpHa")),
-                            paste('F)', nameconvertfunct3("SR")),
-                            paste('G)', nameconvertfunct3("GDPp")),
-                            paste('H)', nameconvertfunct3("BIO15")),
-                            paste('I)', nameconvertfunct3("AFrghtU"))
-                 )) 
-
-y.grob <- textGrob("Density", 
-                   gp=gpar(fontface="bold", col="blue", fontsize=12), rot=90)
-
-grid.arrange(arrangeGrob(plot, left = "Density"))
-dev.off()
-
 
 
 
 ###
 ### Figure 4
-### #prediction maps
-
+### 
 
 #Base map
 finalpresmod_preds = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod)
@@ -596,7 +537,6 @@ plot2 = ggplot()+
   scale_fill_gradient2(name="",low = "blue", mid="green", midpoint = 50, high = "red") #scale_colour_gradient2(name="Percentile",low = "blue", mid="green", midpoint=50,high = "red")+
 
 
-
 #difference map
 background_diff = background_1m[,names(finalpresmod)]
 background_diff$preds = finalpresmod_preds_bias - finalpresmod_preds
@@ -626,10 +566,6 @@ plot3 = ggplot()+
   scale_fill_gradient2(name="",low = "blue", mid="green", midpoint = 50, high = "red")  #22th percentile still has negative values. 
 
 
-
-#tiff("run8_rastermap_percentile.tiff", width = 5, height = 4, units = 'in', res = 900, compression='lzw')
-#dev.off() 
-
 #fix widths
 plots <- list(plot1, plot2, plot3)
 grobs <- list()
@@ -646,7 +582,7 @@ for (i in 1:length(grobs)){
   grobs[[i]]$widths[2:5] <- as.list(maxwidth)
 }
 
-tiff("Run8_Figure5_legend2.tiff", width = 12, height = 4.0, units = 'in', compression = "lzw", res=800) #width = 12, height = 4,  # res = 800
+tiff("Output/Figure4.tiff", width = 12, height = 4.0, units = 'in', compression = "lzw", res=900) #width = 12, height = 4,  # res = 800
 plot_grid(grobs[[1]], grobs[[2]],grobs[[3]],mylegend, align = "h", nrow = 1, axis="b", 
           rel_widths = c(4/13,4/13,4/13, 1/13), rel_heights = c(1/4,1/4,1/4,1/4), label_size = 12,
           labels=c("A) no bias-correction", "B) with bias-correction", "C) difference"),hjust=0, label_x = 0.025)
@@ -798,7 +734,7 @@ legend("bottomright", legend=c("same genera","Lepidoptera", "Insecta"),
        col=c("red", "purple", "orange"), lty=1,lwd=2, cex=0.8, box.lty=0)
 
 
-tiff(paste("Run8_Figure6_VarImpDifferences","_plot",".tiff",sep=""), width = 9, height = 6, units = 'in', res = 900, compression='lzw')
+tiff(paste("Output/Figure5",".tiff",sep=""), width = 9, height = 6, units = 'in', res = 900, compression='lzw')
 par(mgp = c(2,0.5,0),mar=c(3,13,1.1,1.1))
 testplot = barplot(plotvalues, beside=T, horiz=T, las=1, xlim=c(-0.4, 0.15),  main="", xlab= "Change in relative importance", xpd=T, col=c("red", "purple", "orange"))
 arrows(plotarrows_upper,testplot, plotarrows_lower, testplot, angle=90, code=3, length=0.05)
@@ -817,9 +753,125 @@ dev.off()
 background_temp = background
 names(background_temp) = nameconvertfunct(names(background_temp))
 
-tiff("corplot_background.tiff", width = 10, height = 10, units = 'in', res = 600, compression="lzw")
+tiff("Output/S4.tiff", width = 10, height = 10, units = 'in', res = 600, compression="lzw")
 corplotfunct(background_temp)
 dev.off()
+
+
+
+####
+### Appendix S5
+####
+Ch3_densplotgenerator2 = function(variable, legend=F, customxlim=NA, density=F){
+  
+  variablemin = mins[variable]
+  variablemax = maxs[variable]
+  xrange = seq(variablemin, variablemax, length.out=512)
+  
+  ymax = 1*max(c(finalpresmod[[variable]](xrange),
+                 finalbackmod[[variable]](xrange),
+                 biasbackmodel[[variable]](xrange),
+                 biasbackmodel2[[variable]](xrange),
+                 biasbackmodel3[[variable]](xrange)
+  ))
+  
+  
+  #plottitle = nameconvertfunct3(variable)
+  xlab = unitconvertfunct(variable)
+  xlim = c(variablemin, variablemax)
+  
+  
+  if(legend==T){
+    ymax = 1.5*max(c(finalpresmod[[variable]](xrange),
+                     finalbackmod[[variable]](xrange),
+                     biasbackmodel[[variable]](xrange),
+                     biasbackmodel2[[variable]](xrange),
+                     biasbackmodel3[[variable]](xrange)
+    ))
+  }
+  
+  
+  if(!is.na(customxlim)){
+    xlim = customxlim
+  }
+  
+  ylab=""
+  
+  if(density==T){
+    ylab="Density"
+  }
+  
+  plotf = function(){
+    curve(finalpresmod[[variable]](x), xlim= xlim, ylim=c(0,ymax),ylab=ylab, xlab=xlab, axes=F,frame.plot=TRUE, col="green", lwd=2, lty=2)
+    Axis(side=1, labels=T)
+    curve(biasbackmodel[[variable]](x), col="red", lwd=2, add=T)
+    curve(biasbackmodel2[[variable]](x), col="purple", lwd=2, add=T) #lepidoptera
+    curve(biasbackmodel3[[variable]](x), col="orange", lwd=2, add=T) #insecta
+    curve(finalbackmod[[variable]](x), col="black", lwd=2, add=T)
+    
+    if(legend==T){
+      legend("topleft",  bty="n", cex=1,y.intersp=1.2, legend=c("Establishments", "Background"), col= c("green", "black"), lty=c(2,1), lwd=2)
+    }
+    #border = "", bg= "",
+  } 
+  return(plotf)
+}
+
+
+
+
+
+
+#appendix figure
+plot9 = Ch3_densplotgenerator2("BIO11", legend=T) 
+plot9 = as.grob(plot9)
+
+plot10 = Ch3_densplotgenerator("NrArp_D") 
+plot10 = as.grob(plot10)
+
+plot11 = Ch3_densplotgenerator("NrPrt_D") #Distance to n. port
+plot11 = as.grob(plot11)
+
+plot12 = Ch3_densplotgenerator("OrPlHa") #Ornamental plants cover
+plot12 = as.grob(plot12)
+
+plot13 = Ch3_densplotgenerator("ACrpHa") #Crop cover
+plot13 = as.grob(plot13)
+
+plot14 = Ch3_densplotgenerator2("SR") #Tree Species Richness
+plot14 = as.grob(plot14)
+
+plot15 = Ch3_densplotgenerator("GDPp") #GDP per capita
+plot15 = as.grob(plot15)
+
+plot16 = Ch3_densplotgenerator("BIO15") #Prec. seasonality
+plot16 = as.grob(plot16)
+
+plot17 = Ch3_densplotgenerator("AFrghtU") #Air freight
+plot17 = as.grob(plot17)
+
+tiff("Output/S5.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
+plot = plot_grid(plot9, plot10, plot11, plot12, plot13, plot14, plot15, plot16, plot17,
+                 nrow=2, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
+                 labels = c(paste('A)', nameconvertfunct3("BIO11")),
+                            paste('B)', nameconvertfunct3("NrArp_D")),
+                            paste('C)', nameconvertfunct3("NrPrt_D")),
+                            paste('D)', nameconvertfunct3("OrPlHa")),
+                            paste('E)', nameconvertfunct3("ACrpHa")),
+                            paste('F)', nameconvertfunct3("SR")),
+                            paste('G)', nameconvertfunct3("GDPp")),
+                            paste('H)', nameconvertfunct3("BIO15")),
+                            paste('I)', nameconvertfunct3("AFrghtU"))
+                 )) 
+
+y.grob <- textGrob("Density", 
+                   gp=gpar(fontface="bold", col="blue", fontsize=12), rot=90)
+
+grid.arrange(arrangeGrob(plot, left = "Density"))
+dev.off()
+
+
+
 
 ####
 ### Appendix S6 and cdf values for in the discussion. 
@@ -853,7 +905,7 @@ predfunct_NrCtyD_base = function(x){
 }
 
 predfunct_NrCtyD_base_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_base, min=0, max=450)
+  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_base, min=0, max=max(xvals_NrCty_D))
 }
 
 
@@ -866,7 +918,7 @@ predfunct_NrCtyD_bias = function(x){
 }
 
 predfunct_NrCtyD_bias_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias, min=0, max=450)
+  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias, min=0, max=max(xvals_NrCty_D))
 }
 
 #lepidoptera
@@ -878,7 +930,7 @@ predfunct_NrCtyD_bias2 = function(x){
 }
 
 predfunct_NrCtyD_bias2_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias2, min=0, max=450)
+  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias2, min=0, max=max(xvals_NrCty_D))
 }
 
 #insecta
@@ -890,7 +942,7 @@ predfunct_NrCtyD_bias3 = function(x){
 }
 
 predfunct_NrCtyD_bias3_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias3, min=0, max=450)
+  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias3, min=0, max=max(xvals_NrCty_D))
 }
 
 
@@ -947,7 +999,7 @@ predfunct_POPD_bias3_cdf2 = function(x){
 }
 
 
-#Figure S7
+#Figure S6
 plot1 = function(){
   curve(predfunct_NrCtyD_base_cdf2(x), xlim=c(min(xvals_NrCty_D),200 ), col="green", lwd=2, lty=2, xlab="km", ylab="Cumulative probability") #max(xvals_NrCty_D)
   curve(predfunct_NrCtyD_bias_cdf2(x),  col="red", lwd=2, add=T)
@@ -967,15 +1019,49 @@ plot2 = function(){
 plot2 = as.grob(plot2)
 
 
-tiff("Run8_Appendix_cdfplots.tiff", width = 10, height = 5, units = 'in', res = 900, compression="lzw") #
+tiff("Output/S6.tiff", width = 10, height = 5, units = 'in', res = 900, compression="lzw") #
 par(mgp = c(1,0.5,0),mar=c(3,3,1.1,1.1))
 plot_grid(plot1, plot2, label_size = 12, axis='l',
                  labels = c(paste('A)', nameconvertfunct3("NrCty_D")),
                             paste('B)', nameconvertfunct3("POPD")))) 
 dev.off()
 
+# ###RM
+# predfunct_NrCtyD_base_cdf2(400) #0.8745522
+# predfunct_NrCtyD_bias_cdf2(400) #0.6775515
+# predfunct_NrCtyD_bias2_cdf2(450) #0.7992625
+# predfunct_NrCtyD_bias3_cdf2(400) #0.7394912
+# #NrCty_D limits = 0.040000000 #449.7300000
+# maxs
+# BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias2, min=0, max=450)
+# 
+# finalpresmod$POPD(x)
+# finalbiasmod2$POPD
+# 
+# 
+# curve(predfunct_NrCtyD_base_cdf2(x), xlim=c(0,200 ), col="green", lwd=2, lty=2, xlab="km", ylab="Cumulative probability") #max(xvals_NrCty_D)
+# curve(predfunct_NrCtyD_bias_cdf2(x),  col="red", lwd=2, add=T)
+# curve(predfunct_NrCtyD_bias2_cdf2(x),  col="purple", lwd=2, add=T)
+# curve(predfunct_NrCtyD_bias3_cdf2(x),  col="orange", lwd=2, add=T)
+# legend(x=120, y=0.2, legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
+#        col=c("green", "red", "purple", "orange"), lty=c(2,1,1,1),lwd=2, cex=1, box.lty=0)
+# 
+# curve(predfunct_NrCtyD_base(x), xlim=c(0,450 ), col="green", lwd=2, lty=2, xlab="km", ylab="Relative probability") #max(xvals_NrCty_D)
+# curve(predfunct_NrCtyD_bias(x),  col="red", lwd=2, add=T)
+# curve(predfunct_NrCtyD_bias2(x),  col="purple", lwd=2, add=T)
+# curve(predfunct_NrCtyD_bias3(x),  col="orange", lwd=2, add=T)
+# legend("topright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
+#        col=c("green", "red", "purple", "orange"), lty=c(2,1,1,1),lwd=2, cex=1, box.lty=0)
+# 
+# 
+# curve(finalbackmod$NrCty_D(x), xlim=c(0,450))
+# 
+# predfunct_NrCtyD_bias2
+# ###/RM
 
-#values
+
+
+#values distance to city
 predfunct_NrCtyD_base_cdf2(5) #0.376305
 predfunct_NrCtyD_bias_cdf2(5) #0.160753
 predfunct_NrCtyD_bias2_cdf2(5) #0.1683589
@@ -986,7 +1072,7 @@ predfunct_NrCtyD_bias_cdf2(50) #0.6775515
 predfunct_NrCtyD_bias2_cdf2(50) #0.7992625
 predfunct_NrCtyD_bias3_cdf2(50) #0.7394912
 
-#values
+#values population density
 predfunct_POPD_base_cdf2(6) #0.06407103
 predfunct_POPD_bias_cdf2(6) #0.1533739
 predfunct_POPD_bias2_cdf2(6) #0.04107063
@@ -1007,53 +1093,51 @@ predfunct_POPD_bias3_cdf2(9) #0.5906305
 
 
 
-
-### 
-### Miscellaneous figures
-###
-
-#VarImp
-time = Sys.time()
-createVarImpPlot(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 50, prefix = "run7_sub1", origAUC = sub_perf[[2]], origNLLp = sub_perf[[1]]) #origAUC = subvarmodels[[2]][["AUC_mean"]], origNLLp = subvarmodels[[2]][["NLLp_mean"]]
-Sys.time() - time
-
-time = Sys.time()
-createVarImpPlotAbsolute(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 100, prefix = "run7_sub1_abs", origAUC = sub_perf[["auc"]], origNLLp = sub_perf[["logloss"]])
-Sys.time() - time
-
-
-###Ecdf vs CDF plots
-lapply(names(finalpresmod),function(x) plotAssessFit(data=reportssub, model=finalpresmod, alldata=suballdata, variable=x, prefix="run7_Rep_"))
-lapply(names(finalpresmod),function(x) plotAssessFit(data=backgroundsub, model=finalbackmod, alldata=suballdata, variable=x, prefix="run7_Back_"))
-
-###Response plots
-lapply(names(finalpresmod),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = subukde_back, alldata = suballdata, npres=274, prefix="run7_", cex=1))
-#plotResponseCond
-
-#assess fits of sampling models
-lapply(names(sampfinalpresmod),function(x) plotAssessFit(data=samplessub, model=sampfinalpresmod, alldata=sampalldata, variable=x, prefix="run7_Samp_"))
-lapply(names(sampfinalpresmod),function(x) plotResponseMarg(variable = x, presmod = sampfinalpresmod, backmod = sampukde_back, alldata = sampalldata, npres=52237, prefix="run7_Samp", cex=1))
-
-#response
-lapply(names(sampukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel, alldata = suballdata, npres=273, prefix="run7_BiasGenera", cex=1))
-
-
-###Lepidoptera model
-#assess fits
-lapply(names(lepidopterafinalpresmod),function(x) plotAssessFit(data=lepidopterasub, model=lepidopterafinalpresmod, alldata=lepidopteraalldata, variable=x, prefix="run7_lepidoptera_"))
-lapply(names(lepidopterafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = lepidopterafinalpresmod, backmod = lepidopteraukde_back, alldata = lepidopteraalldata, npres=5612600, prefix="run7_lepidoptera", cex=1))
-
-#response
-lapply(names(lepidopteraukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel2, alldata = suballdata, npres=273, prefix="run7_Biaslepidoptera", cex=1))
-
-
-
-
-###Insecta model
-#assess fits
-lapply(names(insectafinalpresmod),function(x) plotAssessFit(data=insectasub, model=insectafinalpresmod, alldata=insectaalldata, variable=x, prefix="run7_insecta_"))
-lapply(names(insectafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = insectafinalpresmod, backmod = insectaukde_back, alldata = insectaalldata, npres=5612600, prefix="run7_insecta", cex=1))
-
-#Insecta bias corrected
-#response
-lapply(names(insectaukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel3, alldata = suballdata, npres=273, prefix="run7_Biasinsecta", cex=1))
+ 
+# ###
+# ### Miscellaneous figures
+# ###
+# 
+# #VarImp
+# time = Sys.time()
+# createVarImpPlot(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 50, prefix = "run7_sub1", origAUC = sub_perf[[2]], origNLLp = sub_perf[[1]]) #origAUC = subvarmodels[[2]][["AUC_mean"]], origNLLp = subvarmodels[[2]][["NLLp_mean"]]
+# Sys.time() - time
+# 
+# time = Sys.time()
+# createVarImpPlotAbsolute(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 100, prefix = "run7_sub1_abs", origAUC = sub_perf[["auc"]], origNLLp = sub_perf[["logloss"]])
+# Sys.time() - time
+# 
+# 
+# ###Ecdf vs CDF plots
+# lapply(names(finalpresmod),function(x) plotAssessFit(data=reportssub, model=finalpresmod, alldata=suballdata, variable=x, prefix="run7_Rep_"))
+# lapply(names(finalpresmod),function(x) plotAssessFit(data=backgroundsub, model=finalbackmod, alldata=suballdata, variable=x, prefix="run7_Back_"))
+# 
+# ###Response plots
+# lapply(names(finalpresmod),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = subukde_back, alldata = suballdata, npres=274, prefix="run7_", cex=1))
+# #plotResponseCond
+# 
+# #assess fits of sampling models
+# lapply(names(sampfinalpresmod),function(x) plotAssessFit(data=samplessub, model=sampfinalpresmod, alldata=sampalldata, variable=x, prefix="run7_Samp_"))
+# lapply(names(sampfinalpresmod),function(x) plotResponseMarg(variable = x, presmod = sampfinalpresmod, backmod = sampukde_back, alldata = sampalldata, npres=52237, prefix="run7_Samp", cex=1))
+# 
+# #response
+# lapply(names(sampukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel, alldata = suballdata, npres=273, prefix="run7_BiasGenera", cex=1))
+# 
+# 
+# ###Lepidoptera model
+# #assess fits
+# lapply(names(lepidopterafinalpresmod),function(x) plotAssessFit(data=lepidopterasub, model=lepidopterafinalpresmod, alldata=lepidopteraalldata, variable=x, prefix="run7_lepidoptera_"))
+# lapply(names(lepidopterafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = lepidopterafinalpresmod, backmod = lepidopteraukde_back, alldata = lepidopteraalldata, npres=5612600, prefix="run7_lepidoptera", cex=1))
+# 
+# #response
+# lapply(names(lepidopteraukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel2, alldata = suballdata, npres=273, prefix="run7_Biaslepidoptera", cex=1))
+# 
+# 
+# ###Insecta model
+# #assess fits
+# lapply(names(insectafinalpresmod),function(x) plotAssessFit(data=insectasub, model=insectafinalpresmod, alldata=insectaalldata, variable=x, prefix="run7_insecta_"))
+# lapply(names(insectafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = insectafinalpresmod, backmod = insectaukde_back, alldata = insectaalldata, npres=5612600, prefix="run7_insecta", cex=1))
+# 
+# #Insecta bias corrected
+# #response
+# lapply(names(insectaukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel3, alldata = suballdata, npres=273, prefix="run7_Biasinsecta", cex=1))

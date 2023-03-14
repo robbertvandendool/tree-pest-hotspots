@@ -7,8 +7,9 @@
 #rm(list=ls(all=TRUE))
 
 #load packages
+if(!require("easypackages")) install.packages("easypackages")
 library(easypackages)
-packages("sf", "caret", "rgdal", "kdevine", "sp", "raster", "rstudioapi", "sgt", "pROC", "MASS", "ggplot2", "rnaturalearth", "rnaturalearthdata", "gridExtra", "furrr")
+packages("sf", "caret", "rgdal", "kdevine", "sp", "raster", "rstudioapi", "sgt", "pROC", "MASS", "ggplot2", "rnaturalearth", "rnaturalearthdata", "gridExtra", "furrr", prompt = FALSE)
 set.seed(123456789)
 
 #load functions
@@ -17,9 +18,17 @@ source("Scripts/Functions.R")
 #load data
 reports = readRDS(file="Intermediate/reports.rds")
 background = readRDS(file="Intermediate/background.rds")
+background_1m = readRDS(file="Intermediate/background_maps.rds")
 samples = readRDS(file="Intermediate/samegenera.rds")
-insecta = readRDS(file="Intermediate/insecta.rds")
-lepidoptera = readRDS(file="Intermediate/lepidoptera.rds")
+insecta1 = readRDS(file="Intermediate/insecta_1.rds")
+insecta2 = readRDS(file="Intermediate/insecta_2.rds")
+insecta3 = readRDS(file="Intermediate/insecta_3.rds")
+insecta4 = readRDS(file="Intermediate/insecta_4.rds")
+insecta = rbind(insecta1, insecta2, insecta3, insecta4)
+
+lepidoptera1 = readRDS(file="Intermediate/lepidoptera_1.rds")
+lepidoptera2 = readRDS(file="Intermediate/lepidoptera_2.rds")
+lepidoptera = rbind(lepidoptera1, lepidoptera2)
 
 #setup multicore support
 plan(multisession, workers = 8)
