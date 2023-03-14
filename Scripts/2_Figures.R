@@ -1026,7 +1026,7 @@ plot_grid(plot1, plot2, label_size = 12, axis='l',
                             paste('B)', nameconvertfunct3("POPD")))) 
 dev.off()
 
-# ###RM
+###RM
 # predfunct_NrCtyD_base_cdf2(400) #0.8745522
 # predfunct_NrCtyD_bias_cdf2(400) #0.6775515
 # predfunct_NrCtyD_bias2_cdf2(450) #0.7992625
@@ -1057,6 +1057,128 @@ dev.off()
 # curve(finalbackmod$NrCty_D(x), xlim=c(0,450))
 # 
 # predfunct_NrCtyD_bias2
+
+pres_nrctyd_cdf = function(x){
+  BSDMapproxPKDE(x, finalpresmod$NrCty_D, min=0, max=450)
+}
+
+back_nrctyd_cdf = function(x){
+  BSDMapproxPKDE(x, finalbackmod$NrCty_D, min=0, max=450)
+}
+
+bias_nrctyd_cdf = function(x){
+  BSDMapproxPKDE(x, biasbackmodel$NrCty_D, min=0, max=450)
+}
+
+bias2_nrctyd_cdf = function(x){
+  BSDMapproxPKDE(x, biasbackmodel2$NrCty_D, min=0, max=450)
+}
+
+bias3_nrctyd_cdf = function(x){
+  BSDMapproxPKDE(x, biasbackmodel3$NrCty_D, min=0, max=450)
+}
+#plots
+curve(pres_nrctyd_cdf(x), xlim=c(0,450), col="green", lwd=2)
+curve(back_nrctyd_cdf(x), xlim=c(0,450), add=T, col="grey", lwd=2)
+curve(bias_nrctyd_cdf(x), xlim=c(0,450), add=T, col="red", lwd=2)
+curve(bias2_nrctyd_cdf(x), xlim=c(0,450), add=T, col="purple", lwd=2)
+curve(bias3_nrctyd_cdf(x), xlim=c(0,450), add=T, col="orange", lwd=2)
+
+legend("bottomright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta", "background"),
+        col=c("green", "red", "purple", "orange", "grey"), lty=c(1,1,1,1),lwd=2, cex=1, box.lty=0)
+
+
+#taking marginal model predictions
+
+test = predfunct_NrCtyD_base(background$NrCty_D)
+test2 = predfunct_NrCtyD_bias(background$NrCty_D)
+test3 = predfunct_NrCtyD_bias2(background$NrCty_D)
+test4 = predfunct_NrCtyD_bias3(background$NrCty_D)
+
+sum_test = sum(test)
+sum_test2 = sum(test2)
+sum_test3 = sum(test3)
+
+sum(test[background$NrCty_D < 5] / sum_test) #0.2320198
+sum(test2[background$NrCty_D < 5] / sum_test2) #0.0657
+sum(test3[background$NrCty_D < 5] / sum_test3) #0.0935
+
+CalcProbMass_NrCty_D <- function(data, preds){
+  sumt = sum(preds)
+  xvals = seq(min(data),max(data),length.out=512)
+  yvals = sapply(xvals, function(x) sum( preds[data < x] / sumt))
+  return(function(val){approx(xvals, yvals, val, rule=2, ties="ordered")$y})
+}
+
+test_x = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test)
+test_x(5)
+
+test_xbias = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test2)
+test_xbias(5)
+
+test_xbias2 = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test3)
+test_xbias2(5)
+
+test_xbias3 = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test4)
+test_xbias3(5)
+
+curve(test_x, xlim=c(0,450), col="green", lwd=2)
+curve(test_xbias, add=T, col="red", lwd=2)
+curve(test_xbias2, add=T, col="purple", lwd=2)
+curve(test_xbias3, add=T, col="orange", lwd=2)
+legend("bottomright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
+       col=c("green", "red", "purple", "orange"), lty=c(1,1,1,1),lwd=2, cex=1, box.lty=0)
+
+CalcProbMass <- function(data, variable){
+  xvals=seq(mins[variable],maxs[variable],length.out=500)
+  sapply(xvals, function(x) sum(data$preds_scaled[st_drop_geometry(data[,variable]) < x],na.rm=T))
+}
+
+
+#probability mass - Distance to city
+xvals=seq(mins["NrCty_D"],maxs["NrCty_D"],length.out=500)
+
+pmass_base = CalcProbMass(background_base2, "NrCty_D")
+pmass_biasgenera = CalcProbMass(background_bias, "NrCty_D")
+pmass_biaslepidoptera = CalcProbMass(background_bias2, "NrCty_D")
+pmass_biasinsecta = CalcProbMass(background_bias3, "NrCty_D")
+
+
+
+#all data
+finalpresmod_preds = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod)
+finalpresmod_preds_samegenera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel)
+finalpresmod_preds_lepidoptera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel2)
+finalpresmod_preds_insecta = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel3)
+
+CalcProbMass_NrCty_D <- function(data, preds){
+  sumt = sum(preds, na.rm=T)
+  xvals = seq(min(data),max(data),length.out=512)
+  yvals = sapply(xvals, function(x) sum( preds[data < x] / sumt,na.rm=T))
+  return(function(val){approx(xvals, yvals, val, rule=2, ties="ordered")$y})
+}
+
+
+probmass_full_base = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds)
+probmass_full_samegenera = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds_samegenera)
+probmass_full_lepidoptera = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds_lepidoptera)
+probmass_full_insecta = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds_insecta)
+
+curve(probmass_full_base(x),xlim=c(0,450), col="green")
+curve(probmass_full_samegenera(x),add=T, col="red")
+curve(probmass_full_lepidoptera(x),add=T, col="purple")
+curve(probmass_full_insecta(x),add=T, col="orange")
+
+curve(probmass_full_base(x),xlim=c(0,20), col="green")
+curve(probmass_full_samegenera(x),add=T, col="red")
+curve(probmass_full_lepidoptera(x),add=T, col="purple")
+curve(probmass_full_insecta(x),add=T, col="orange")
+
+
+probmass_full_base(5) #0.4949545
+probmass_full_samegenera(5) #0.4690233
+probmass_full_lepidoptera(5) #0.4090853
+probmass_full_insecta(5) #0.554302
 # ###/RM
 
 
