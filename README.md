@@ -1,5 +1,5 @@
 # tree-pest-hotspots
-This repository contains the data and code necessary to reproduce the paper 'Introduction hotspots of non-native tree pests and the role of cities'. 
+This repository contains the data and code necessary to reproduce the paper van den Dool et al. (2023) 'Introduction hotspots of non-native tree pests and the role of cities' by Robbert T. van den Dool, Alejandro Morales, Wopke van der Werf & Jacob C. Douma. 
 
 # Raw data and data scripts not included
 The data and code are limited to the intermediate data and the analysis.  
