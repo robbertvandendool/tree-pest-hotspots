@@ -1,14 +1,14 @@
 ###### Figures script for the paper 'Introduction hotspots of non-native tree pests and the role of cities' by
 ###### Robbert T. van den Dool, Alejandro Morales, Wopke van der Werf & J.C. (Bob) Douma
-###### Last edited 13 March 2023 - Robbert T. van den Dool
-# Used to generate the figures shown in the manuscript. 
+###### Last edited 17 July 2023 - Robbert T. van den Dool
+
+# Used to generate most of the figures shown in the manuscript. 
 # run 1_Analysis.R first. 
 
-#insectasub = insectaalldata[1:(nrow(insectaalldata)-nrow(background)),]
-#lepidopterasub = lepidopteraalldata[1:(nrow(lepidopteraalldata)-nrow(background)),]
+
 
 packages("cowplot", "ggplotify", "grid", "gridExtra", prompt=FALSE)
-
+packages("viridis")
 
 #Namesconvert function 
 #varnames 
@@ -48,13 +48,13 @@ fullvarnames = c("Tree cover",
                  "Nr.Airport distance",
                  "Tree Species Richness",
                  "Tourism",
-                 "W. products n. companies",
-                 "W. products n. employed",
+                 "W. product n. companies",
+                 "W. product n. employed",
                  "Nr.City distance LOG",
                  "Random variable")
 
 
-namestable = data.frame(varnames = names(reports), fullnames = fullvarnames)
+namestable = data.frame(varnames = names(st_drop_geometry(reports_base)), fullnames = fullvarnames)
 
 #convert names
 nameconvertfunct = function(name){
@@ -64,7 +64,7 @@ nameconvertfunct = function(name){
 
 fullvarnames2 = c("Tree cover",
                   "*Tree cover",
-                  "*Mean temperature",
+                  "Mean temperature",
                   "Diurnal range",
                   "Isothermality",
                   "Temp. seasonality",
@@ -88,9 +88,9 @@ fullvarnames2 = c("Tree cover",
                   "*Permanent crop cover",
                   "*Tree nurseries cover",
                   "*Ornamental plants cover", 
-                  "Gross domestic product",
+                  "*Gross domestic product",
                   "*GDP per capita",
-                  "Maritime freight",
+                  "*Maritime freight",
                   "*Air freight",
                   "*Distance to n. city",
                   "Freight unloaded at n. port",
@@ -98,13 +98,13 @@ fullvarnames2 = c("Tree cover",
                   "Distance to n. airport",
                   "*Tree Species Richness",
                   "*Tourism",
-                  "*Wood processing companies",
-                  "Wood processing employees",
+                  "*Wood product companies",
+                  "Wood product employees",
                   "Nr.City distance LOG",
                   "Random variable")
 
 
-namestable2 = data.frame(varnames = names(reports), fullnames = fullvarnames2)
+namestable2 = data.frame(varnames = names(st_drop_geometry(reports_base)), fullnames = fullvarnames2)
 
 nameconvertfunct2 = function(name){
   newname = namestable2[which(namestable2[,1]==name),2]
@@ -148,13 +148,13 @@ fullvarnames3 = c("Tree cover",
                   "Distance to n. airport",
                   "Tree Species Richness",
                   "Tourism",
-                  "Wood processing companies",
-                  "Wood processing employees",
+                  "Wood product companies",
+                  "Wood product employees",
                   "Nr.City distance LOG",
                   "Random variable")
 
 
-namestable3 = data.frame(varnames = names(reports), fullnames = fullvarnames3)
+namestable3 = data.frame(varnames = names(st_drop_geometry(reports_base)), fullnames = fullvarnames3)
 
 nameconvertfunct3 = function(name){
   newname = namestable3[which(namestable3[,1]==name),2]
@@ -197,14 +197,14 @@ unitnames = c("% Tree cover",
                   expression(paste("km")),
                   expression(paste("km")),
                   expression(paste("Number of tree species")),
-                  expression(Foreign ~ nightly ~ stays ~ year^-1 ~ km^2),
+                  expression(paste("ln(Foreign nightly stays ", year^-1, " ", km^2, " + 1)")), #expression(Foreign ~ nightly ~ stays ~ year^-1 ~ km^2),
                   expression(paste("ln(Companies per ", km^2, " * 1000 + 1)")), 
                   expression(paste("ln(Employees per ", km^2, " * 1000 + 1)")),
                   "Nr.City distance LOG",
                   "Random variable")
 
 
-unittable = list(varnames = names(reports), units = unitnames)
+unittable = list(varnames = names(st_drop_geometry(reports_base)), units = unitnames)
 
 unitconvertfunct = function(name){
   unitname = unittable[[2]][which(unittable[[1]]==name)]
@@ -227,15 +227,20 @@ NUTS2_2016 <- readOGR("Intermediate/NUTS2_2016_v3.shp")
 NUTS2_2016sf <- st_as_sf(NUTS2_2016)
 NUTS2_2016sf <- st_transform(NUTS2_2016sf, crs=3035)
 
+samegenera_both_PA_sf = readRDS(file="Intermediate/SG_both.rds")
+
+
 tiff("Output/Figure1.tiff", width = 5, height = 4, units = 'in', res = 900, compression="lzw")
 ggplot()+
   geom_sf(data=europe_eu)+
   theme_minimal()+
   geom_sf(data=NUTS2_2016sf, fill="white")+
-  geom_sf(data=samples_base, colour="red", size=0.2, alpha = 0.35)+
-  geom_sf(data=reports_base, colour="blue", size=0.6)+
+  geom_sf(data=samegenera_both_PA_sf, colour=brewer.pal(9,"Set1")[1], size=0.2, alpha = 0.2)+
+  geom_sf(data=reports_base, colour=brewer.pal(9,"Set1")[2], size=0.6)+
   coord_sf(xlim=c(2426378.0132,6093974.6215), ylim=c(1318101.2618,5446513.5222), expand=F) #xlim=c(2426378.0132,6293974.6215), ylim=c(1528101.2618,5446513.5222)
 dev.off()
+
+
 
 ####
 #### Figure 2
@@ -243,9 +248,9 @@ dev.off()
 
 #plot1
 allresults_fig2 = allresults
-allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),]
+#allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),]
 
-plotdataframe = allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),]
+plotdataframe = as.data.frame(allresults_fig2[!rownames(allresults_fig2) %in% c("frstcvr", "NrCty_DLOG"),])
 
 newrownames = unlist(sapply(rownames(plotdataframe), nameconvertfunct2))
 names(newrownames) = NULL
@@ -261,10 +266,12 @@ plotdataframe$index = 1:nrow(plotdataframe)
 plotdataframe$title = factor(plotdataframe$title, levels = plotdataframe$title)
 
 plot1 <- ggplot(plotdataframe, aes(y = title, x = AUC_mean, color=AUC_mean, height=25)) +
-  geom_point(shape = 16, size = 2) +  
+  geom_point(shape = 16, size = 1.5) +  
   geom_errorbarh(aes(xmin = AUC_lower, xmax = AUC_upper), height = 0.5) +
   scale_y_discrete(limits = rev) +
-  scale_color_gradient2(name="Percentile",low = "blue", mid="green", midpoint=0.7,high = "red") +
+  scale_color_viridis(discrete=F, option="viridis", begin=0, end=1, direction=-1)+
+  #scale_color_distiller(palette = "Spectral", direction = - 1, limits = c(0.5,1)) +  #Spectral
+  #scale_color_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=0.7,high = brewer.pal(9,"Set1")[1]) +
   xlab("AUC") + 
   ylab(" ") + 
   theme_bw() +
@@ -273,11 +280,10 @@ plot1 <- ggplot(plotdataframe, aes(y = title, x = AUC_mean, color=AUC_mean, heig
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(), 
         axis.line = element_line(colour = "black"),
-        axis.text.y = element_text(size = 11, colour = "black"),
-        axis.text.x.bottom = element_text(size = 10, colour = "black"),
-        axis.title.x = element_text(size = 12, colour = "black"),
+        axis.text.y = element_text(size = 8, colour = "black"), #11
+        axis.text.x.bottom = element_text(size = 9, colour = "black"), #10
+        axis.title.x = element_text(size = 9, colour = "black"), #12
         legend.position = "none") #,plot.margin = unit(c(0,1,1,1), "cm")
-
 
 
 #plot2
@@ -288,7 +294,7 @@ pmodel = subfinalpresmod
 bmodel = subukde_back
 repeats = 50
 prefix = "run7_sub1_4Dec2022"
-origAUC = 1
+origAUC = subvarmodels[[2]][5] #was 1
 origNLLp = 1
 
 #Calculate VarImp
@@ -300,17 +306,17 @@ VarImp_AUC = lapply(VarImp, function(x) myCI(origAUC - x$AUC)) #how much is AUC 
 VarImp_AUC_min = min(sapply(VarImp_AUC, function(x)x[2]),na.rm = T)
 VarImp_AUC_max = max(sapply(VarImp_AUC, function(x)x[2]),na.rm = T)
 VarImp_AUC_relative = lapply(VarImp_AUC , function(y) (y - VarImp_AUC_min)/ (VarImp_AUC_max-VarImp_AUC_min))
-VarImp_AUC_relativesort = sapply(VarImp_AUC_relative, function(x)x[2])
-names(VarImp_AUC_relativesort) = names(VarImp)
+VarImp_AUC_relativemean = sapply(VarImp_AUC_relative, function(x)x[2])
+names(VarImp_AUC_relativemean) = names(VarImp)
+VarImp_AUC_relativesort = sort(VarImp_AUC_relativemean)
 
 
 upper =   sapply(VarImp_AUC_relative, function(x)x[1])
-upper_sort = upper[order(VarImp_AUC_relativesort)]
+upper_sort = upper[order(VarImp_AUC_relativemean)]
 
 lower =   sapply(VarImp_AUC_relative, function(x)x[3])
-lower_sort = lower[order(VarImp_AUC_relativesort)]
+lower_sort = lower[order(VarImp_AUC_relativemean)]
 
-VarImp_AUC_relativesort = sort(VarImp_AUC_relativesort)
 
 name = paste(prefix,"_VPI_AUC",".tiff",sep="")
 
@@ -324,11 +330,63 @@ plot2 = ggplot(VarImp_ggplotdf, aes(x=value, y=variable, fill=value)) +
   geom_col(aes(value, Variable)) + 
   geom_errorbar(aes(y=Variable, xmin=lower_sort, xmax=upper_sort), width=.5,
                 position=position_dodge(.9)) + 
-  scale_fill_gradient2(name="Percentile",low = "blue", mid="green", midpoint=0.5,high = "red") + 
+  scale_fill_viridis(discrete=F, option="viridis", begin=0, end=1, direction=-1)+
+  #scale_fill_distiller(palette = "Spectral", direction = - 1, limits = c(0,1)) +  #Spectral
+  #scale_fill_brewer(palette = "Spectral", direction = - 1) +
+  #scale_fill_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=0.5,high = brewer.pal(9,"Set1")[1]) + 
   scale_x_continuous(n.breaks=3) +
   ylab("") + 
   theme_bw() +
   xlab("Relative Importance") +
+  theme(legend.position = "none", 
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"),
+        axis.text.x.bottom = element_text(size = 9, colour = "black"), #10
+        axis.title.x = element_text(size = 9, colour = "black"), #12
+        axis.text.y = element_text(size = 9, colour = "black")) #11
+
+
+tiff("Output/Figure2.tiff", width = 170, height = 130, units = 'mm', res = 600, compression="lzw") # 11/7 iinch
+plot_grid(plot1, plot2, labels = c('(a)', '(b)'), nrow=1, label_size = 12, align = "hv", axis = "b", rel_widths = c(1, 1.3)) 
+dev.off()
+
+
+#AUC VPI barplot
+VarImp_AUC = lapply(VarImp, function(x) myCI(origAUC - x$AUC)) #how much is AUC higher with the variable not shuffled?
+# VarImp_AUC_min = min(sapply(VarImp_AUC, function(x)x[2]),na.rm = T)
+# VarImp_AUC_max = max(sapply(VarImp_AUC, function(x)x[2]),na.rm = T)
+# VarImp_AUC_relative = lapply(VarImp_AUC , function(y) (y - VarImp_AUC_min)/ (VarImp_AUC_max-VarImp_AUC_min))
+# VarImp_AUC_relativesort = sapply(VarImp_AUC_relative, function(x)x[2])
+# names(VarImp_AUC_relativesort) = names(VarImp)
+VarImp_AUC_mean = sapply(VarImp_AUC, function(x)x[2])
+names(VarImp_AUC_mean) = names(VarImp_AUC)
+VarImp_AUC_sort = sort(VarImp_AUC_mean)
+
+upper =   sapply(VarImp_AUC, function(x)x[1])
+upper_sort = upper[order(VarImp_AUC_mean)]
+
+lower =   sapply(VarImp_AUC, function(x)x[3])
+lower_sort = lower[order(VarImp_AUC_mean)]
+
+name = paste(prefix,"_VPI_AUC",".tiff",sep="")
+
+VarImp_ggplotdf = data.frame(Variable=names(VarImp_AUC_sort), value=as.numeric(VarImp_AUC_sort), order=1:length(VarImp_AUC_sort))
+
+VarImp_ggplotdf$Variable = factor(VarImp_ggplotdf$Variable, levels = VarImp_ggplotdf$Variable)
+
+plot3 = ggplot(VarImp_ggplotdf, aes(x=value, y=variable, fill=value)) +
+  geom_col(aes(value, Variable)) + 
+  geom_errorbar(aes(y=Variable, xmin=lower_sort, xmax=upper_sort), width=.5,
+                position=position_dodge(.9)) + 
+  #scale_fill_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=0,high = brewer.pal(9,"Set1")[1]) + 
+  scale_fill_viridis(discrete=F, option="viridis", begin=0, end=1, direction=-1)+
+  scale_x_continuous(n.breaks=3) +
+  ylab("") + 
+  theme_bw() +
+  xlab("Absolute AUC Importance") +
   theme(legend.position = "none", 
         panel.border = element_blank(),
         panel.background = element_blank(),
@@ -340,19 +398,15 @@ plot2 = ggplot(VarImp_ggplotdf, aes(x=value, y=variable, fill=value)) +
         axis.text.y = element_text(size = 11, colour = "black"))
 
 
-
-tiff("Output/Figure2.tiff", width = 11, height = 7, units = 'in', res = 1500, compression="lzw")
-plot_grid(plot1, plot2, labels = c('A)', 'B)'), nrow=1, label_size = 12, align = "hv", axis = "b", rel_widths = c(1, 1.3)) 
+tiff("Output/Figure2b.tiff", width = 11, height = 7, units = 'in', res = 1500, compression="lzw")
+plot3
 dev.off()
+
 
 
 ####
 #### Figure 3
 ####
-
-#16 plot components
-#Fig 3 = selection of most important variables
-#appendix -> remaining density plots. 
 
 Ch3_densplotgenerator = function(variable, legend=F, customxlim=NA, density=F){
   
@@ -361,29 +415,22 @@ Ch3_densplotgenerator = function(variable, legend=F, customxlim=NA, density=F){
   xrange = seq(variablemin, variablemax, length.out=512)
   
   ymax = 1*max(c(finalpresmod[[variable]](xrange),
-                   finalbackmod[[variable]](xrange),
-                   biasbackmodel[[variable]](xrange),
-                   biasbackmodel2[[variable]](xrange),
-                   biasbackmodel3[[variable]](xrange)
+                 finalbackmod[[variable]](xrange),
+                 finalbackmod2[[variable]](xrange),
+                 finalbackmod3[[variable]](xrange),
+                 finalbackmod4[[variable]](xrange)
   ))
   
   
-  #plottitle = nameconvertfunct3(variable)
+
   xlab = unitconvertfunct(variable)
   xlim = c(variablemin, variablemax)
   
-  
   if(legend==T){
-    ymax = 1.5*max(c(finalpresmod[[variable]](xrange),
-                     finalbackmod[[variable]](xrange),
-                     biasbackmodel[[variable]](xrange),
-                     biasbackmodel2[[variable]](xrange),
-                     biasbackmodel3[[variable]](xrange)
-    ))
+    ymax = 1*ymax #1.5
   }
   
-  
-  if(!is.na(customxlim)){
+  if(!is.na(customxlim)[1]){
     xlim = customxlim
   }
   
@@ -394,36 +441,38 @@ Ch3_densplotgenerator = function(variable, legend=F, customxlim=NA, density=F){
   }
   
 
-  
 plotf = function(){
-  curve(finalpresmod[[variable]](x), xlim= xlim, ylim=c(0,ymax),ylab=ylab, xlab=xlab, axes=F,frame.plot=TRUE, col="green", lwd=2, lty=2)
-  Axis(side=1, labels=T)
-  curve(biasbackmodel[[variable]](x), col="red", lwd=2, add=T)
-  curve(biasbackmodel2[[variable]](x), col="purple", lwd=2, add=T) #lepidoptera
-  curve(biasbackmodel3[[variable]](x), col="orange", lwd=2, add=T) #insecta
-  curve(finalbackmod[[variable]](x), col="black", lwd=2, add=T)
+  curve(finalpresmod[[variable]](x), xlim= xlim, ylim=c(0,ymax),ylab=ylab, xlab="", axes=F,frame.plot=TRUE, col=brewer.pal(9,"Set1")[3], lwd=2, lty=2, cex=0.4)
+  Axis(side=1, labels=T, line=0, padj=-1.7, cex.axis=0.7, cex=0.7)
+  mtext(side=1, text=xlab, line=1.1, cex=0.7)
+  curve(finalbackmod[[variable]](x), col="black", lwd=2, lty=1, add=T)
+  curve(finalbackmod2[[variable]](x), col=brewer.pal(9,"Set1")[1], lwd=2, lty=3,add=T) #same genera
+  curve(finalbackmod3[[variable]](x), col=brewer.pal(9,"Set1")[4], lwd=2, lty=3, add=T) #lepidoptera
+  curve(finalbackmod4[[variable]](x), col=brewer.pal(9,"Set1")[5], lwd=2, lty=3, add=T) #insecta
+
   
   if(legend==T){
-    legend("topleft",  bty="n", cex=1,y.intersp=1.2, legend=c("Establishments", "Background", "Same genera", "Lepidoptera", "Insecta"), col= c("green", "black", "red", "purple", "orange"), lty=c(2,1,1,1,1), lwd=2)
-  }
+    legend(x=65, y=0.055, bty="n", cex=0.6,y.intersp=2.5, legend=c("Establishments", "Background", "Same genera", "Lepidoptera", "Insecta"), col= c(brewer.pal(9,"Set1")[3], "black", brewer.pal(9,"Set1")[1],brewer.pal(9,"Set1")[4], brewer.pal(9,"Set1")[5]), lty=c(2,1,3,3,3), lwd=2) # 
+  } #"top"
   #border = "", bg= "",
 } 
 return(plotf)
 }
 
-plot1 = Ch3_densplotgenerator("WoodUnits", legend=T, density=F)
-plot1 = as.grob(plot1)
 
-plot2 = Ch3_densplotgenerator("NrCty_D", customxlim=c(0,100))
+plot1 = Ch3_densplotgenerator("NrCty_D", legend=T, customxlim=c(0,100))
+plot1 = as.grob(plot1) 
+
+plot2 = Ch3_densplotgenerator("BIO11")
 plot2 = as.grob(plot2)
 
-plot3 = Ch3_densplotgenerator("PCrpHa")
+plot3 = Ch3_densplotgenerator("WoodUnits")
 plot3 = as.grob(plot3)
 
-plot4 = Ch3_densplotgenerator("NCrpHa")
+plot4 = Ch3_densplotgenerator("BIO10")
 plot4 = as.grob(plot4)
 
-plot5 = Ch3_densplotgenerator("BIO10", density=F)
+plot5 = Ch3_densplotgenerator("POPD")
 plot5 = as.grob(plot5)
 
 plot6 = Ch3_densplotgenerator("Tourism")
@@ -432,28 +481,21 @@ plot6 = as.grob(plot6)
 plot7 = Ch3_densplotgenerator("frstcv1")
 plot7 = as.grob(plot7)
 
-plot8 = Ch3_densplotgenerator("POPD") #in terms of importance should be the 10th plot, not 8th.
-plot8 = as.grob(plot8)
 
-tiff("Output/Figure3.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
-plot = plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8, 
-          nrow=2, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
-          labels = c(paste('A)', nameconvertfunct3("WoodUnits")),
-                     paste('B)', nameconvertfunct3("NrCty_D")),
-                     paste('C)', nameconvertfunct3("PCrpHa")),
-                     paste('D)', nameconvertfunct3("NCrpHa")),
-                     paste('E)', nameconvertfunct3("BIO10")),
-                     paste('F)', nameconvertfunct3("Tourism")),
-                     paste('G)', nameconvertfunct3("frstcv1")),
-                     paste('H)', nameconvertfunct3("POPD"))
-          )) 
-
-y.grob <- textGrob("Density", 
-                   gp=gpar(fontface="bold", col="blue", fontsize=12), rot=90)
+tiff("Output/Figure3.tiff", width = 170, height = 240, units = 'mm', res = 900, compression="lzw") #14/8/'in'/900/"lzw"
+plot = plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, plot7, 
+          nrow=4, label_size = 8, axis='l', hjust=0, vjust=2.7, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, scale=0.9
+          labels = c(paste('(a)', nameconvertfunct3("NrCty_D")),
+                     paste('(b)', nameconvertfunct3("BIO11")),
+                     paste('(c)', nameconvertfunct3("WoodUnits")),
+                     paste('(d)', nameconvertfunct3("BIO10")),
+                     paste('(e)', nameconvertfunct3("POPD")),
+                     paste('(f)', nameconvertfunct3("Tourism")),
+                     paste('(g)', nameconvertfunct3("frstcv1"))
+          )) + theme(plot.margin = unit(c(10,10,10,10), "points"))#+ theme(axis.text.x.bottom = element_text(vjust = 1)) #+ theme(plot.margin = unit(c(70,70,70,70), "points"))  #axis.text.x = element_text(vjust = -2)
 
 grid.arrange(arrangeGrob(plot, left = "Density"))
 dev.off()
-
 
 
 
@@ -487,8 +529,12 @@ plot0 = ggplot()+ #plot0 just for the legend
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
+        legend.title = element_text(size=6),
+        legend.text = element_text(size=6),
         plot.margin=unit(c(0,0.1,0,0.1), "cm"), legend.margin=margin(t = 0, unit='cm'), legend.key.height = unit(1.2, 'cm'))+
-  scale_fill_gradient2(name="Percentile",low = "blue", mid="green", midpoint = 50, high = "red") #scale_colour_gradient2(name="Percentile",low = "blue", mid="green", midpoint=50,high = "red")+
+  scale_fill_viridis(name="Percentile", discrete=F, option="viridis", begin=0, end=1, direction=-1)
+  
+  #scale_fill_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint = 50, high = brewer.pal(9,"Set1")[1]) #scale_colour_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=50,high = brewer.pal(9,"Set1")[1])+
 
 g_legend<-function(a.gplot){
   tmp <- ggplot_gtable(ggplot_build(a.gplot))
@@ -506,10 +552,11 @@ plot1 = ggplot()+
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
         text = element_text(size=7), legend.position="none", plot.margin=unit(c(0,0,0,0), "cm"))+
-  scale_fill_gradient2(name="",low = "blue", mid="green", midpoint = 50, high = "red") #scale_colour_gradient2(name="Percentile",low = "blue", mid="green", midpoint=50,high = "red")+
+  scale_fill_viridis(name="", discrete=F, option="viridis", begin=0, end=1, direction=-1)
+  #scale_fill_gradient2(name="",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint = 50, high = brewer.pal(9,"Set1")[1]) #scale_colour_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=50,high = brewer.pal(9,"Set1")[1])+
 
 #bias corrected map
-finalpresmod_preds_bias = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel)
+finalpresmod_preds_bias = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod2)
 
 background_base2 = background_1m[,names(finalpresmod)]
 background_base2$preds = finalpresmod_preds_bias
@@ -534,8 +581,8 @@ plot2 = ggplot()+
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
         text = element_text(size=7), legend.position="none", axis.text.y = element_blank(), axis.ticks.y = element_blank(), plot.margin=unit(c(0,0,0,0), "cm"))+
-  scale_fill_gradient2(name="",low = "blue", mid="green", midpoint = 50, high = "red") #scale_colour_gradient2(name="Percentile",low = "blue", mid="green", midpoint=50,high = "red")+
-
+  scale_fill_viridis(name="", discrete=F, option="viridis", begin=0, end=1, direction=-1)
+  #scale_fill_gradient2(name="",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint = 50, high = brewer.pal(9,"Set1")[1]) #scale_colour_gradient2(name="Percentile",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint=50,high = brewer.pal(9,"Set1")[1])+
 
 #difference map
 background_diff = background_1m[,names(finalpresmod)]
@@ -555,16 +602,31 @@ diff_raster_df = as(background_raster4, "SpatialPixelsDataFrame")
 diff_raster_df <- as.data.frame(diff_raster_df)
 names(diff_raster_df)[1] = "diff"
 
-plot3 = ggplot()+ 
+plot3 = ggplot()+
   geom_tile(data = diff_raster_df , aes(x = x, y = y, fill = diff)) +
   theme_minimal()+
-  theme(panel.grid.major = element_blank(), 
+  theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        text = element_text(size=7), legend.position="none", axis.text.y = element_blank(), axis.ticks.y = element_blank(), plot.margin=unit(c(0,0,0,0), "cm"))+
-  scale_fill_gradient2(name="",low = "blue", mid="green", midpoint = 50, high = "red")  #22th percentile still has negative values. 
+        text = element_text(size=8), legend.position="none", plot.margin=unit(c(0,0,0,0), "cm"))+
+  scale_fill_viridis(name="", discrete=F, option="viridis", begin=0, end=1, direction=-1)
+  #scale_fill_gradient2(name="",low = brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], midpoint = 50, high = brewer.pal(9,"Set1")[1])  #22th percentile still has negative values.
 
+plot4 = ggplot()+
+  geom_tile(data = diff_raster_df , aes(x = x, y = y, fill = diff)) +
+  theme_minimal()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_text(size=6),
+        legend.text = element_text(size=6),
+        text = element_text(size=8), axis.text.y = element_blank(), axis.ticks.y = element_blank(), plot.margin=unit(c(0,0,0,0), "cm"))+ #legend.position="none",
+  scale_fill_viridis(name="Rel. prob.", discrete=F, option="viridis", begin=0, end=1, direction=-1, breaks=c(0,seq(10,100, by=10)), labels=formatC(brks[c(1, 11,21,31,41,51,61,71,81,91,101)], format = "e", digits = 2))
+  #scale_fill_gradient2(name="Rel. Prob.",breaks=c(0,seq(10,100, by=10)), low=brewer.pal(9,"Set1")[2], mid=brewer.pal(9,"Set1")[3], high=brewer.pal(9,"Set1")[1], midpoint = 50, labels=formatC(brks[c(1, 11,21,31,41,51,61,71,81,91,101)], format = "e", digits = 2)  )  #22th percentile still has negative values.
+
+mylegend2<-g_legend(plot4)
 
 #fix widths
 plots <- list(plot1, plot2, plot3)
@@ -582,27 +644,36 @@ for (i in 1:length(grobs)){
   grobs[[i]]$widths[2:5] <- as.list(maxwidth)
 }
 
-tiff("Output/Figure4.tiff", width = 12, height = 4.0, units = 'in', compression = "lzw", res=900) #width = 12, height = 4,  # res = 800
-plot_grid(grobs[[1]], grobs[[2]],grobs[[3]],mylegend, align = "h", nrow = 1, axis="b", 
-          rel_widths = c(4/13,4/13,4/13, 1/13), rel_heights = c(1/4,1/4,1/4,1/4), label_size = 12,
-          labels=c("A) no bias-correction", "B) with bias-correction", "C) difference"),hjust=0, label_x = 0.025)
+tiff("Output/Figure4.tiff", width = 210, height = 100, units = 'mm', compression = "lzw", res=900) #width = 12, height = 4,  # res = 800
+plot_grid(grobs[[1]], mylegend, grobs[[2]], mylegend, align = "h", nrow = 1, axis="b", 
+          rel_widths = c(9/20,1/20,9/20,1/20), rel_heights = c(1/4,1/4,1/4,1/4), label_size = 12,
+          labels=c("(a) no bias-correction","", "(b) with bias-correction"),hjust=0, label_x = 0.025)
 dev.off()
 
 
 
 
 
+##### Figure 5 
+tiff("Output/Figure5.tiff", width = 112, height = 100, units = 'mm', compression = "lzw", res=900) #width = 12, height = 4,  # res = 800
+plot_grid(grobs[[3]], mylegend2, align = "hv", nrow = 1, axis="b", 
+          rel_widths = c(0.85,0.15), rel_heights = c(1/4,1/4), label_size = 12,
+          labels="")#,hjust=0, label_x = 0.025)
+dev.off()
+
+
+
 
 ####
-#### Figure 5 
+#### Figure 6 
 ####
-biasbackmodelVPI = biasbackmodel
+biasbackmodelVPI = finalbackmod2
 biasbackmodelVPI$runif = subukde_back$runif
 
-biasbackmodelVPI2 = biasbackmodel2
+biasbackmodelVPI2 = finalbackmod3
 biasbackmodelVPI2$runif = subukde_back$runif
 
-biasbackmodelVPI3 = biasbackmodel3
+biasbackmodelVPI3 = finalbackmod4
 biasbackmodelVPI3$runif = subukde_back$runif
 
 varnames = subvarnames
@@ -657,18 +728,18 @@ VarImp2_AUC_Trans_rel = lapply(VarImp2_AUC, function(x) sapply(seq_along(x), fun
 VarImp3_AUC = lapply(VarImp3, function(x) origAUC - x$AUC) #how much is AUC higher with the variable not shuffled?
 
 VarImp3_AUC_Trans = lapply(1:repeats, function(x) sapply(VarImp3_AUC, function(y) y[x]))
-VarImp3_AUC_min = sapply(VarImp3_AUC_Trans, min)      
-VarImp3_AUC_max = sapply(VarImp3_AUC_Trans, max)  
-VarImp3_AUC_Trans_rel = lapply(VarImp3_AUC, function(x) sapply(seq_along(x), function(y) (x[y] - VarImp3_AUC_min[y])/ (VarImp3_AUC_max[y]-VarImp3_AUC_min[y]))) 
+VarImp3_AUC_min = sapply(VarImp3_AUC_Trans, min)
+VarImp3_AUC_max = sapply(VarImp3_AUC_Trans, max)
+VarImp3_AUC_Trans_rel = lapply(VarImp3_AUC, function(x) sapply(seq_along(x), function(y) (x[y] - VarImp3_AUC_min[y])/ (VarImp3_AUC_max[y]-VarImp3_AUC_min[y])))
 
 
 #Insecta
 VarImp4_AUC = lapply(VarImp4, function(x) origAUC - x$AUC) #how much is AUC higher with the variable not shuffled?
 
 VarImp4_AUC_Trans = lapply(1:repeats, function(x) sapply(VarImp4_AUC, function(y) y[x]))
-VarImp4_AUC_min = sapply(VarImp4_AUC_Trans, min)      
-VarImp4_AUC_max = sapply(VarImp4_AUC_Trans, max)  
-VarImp4_AUC_Trans_rel = lapply(VarImp4_AUC, function(x) sapply(seq_along(x), function(y) (x[y] - VarImp4_AUC_min[y])/ (VarImp4_AUC_max[y]-VarImp4_AUC_min[y]))) 
+VarImp4_AUC_min = sapply(VarImp4_AUC_Trans, min)
+VarImp4_AUC_max = sapply(VarImp4_AUC_Trans, max)
+VarImp4_AUC_Trans_rel = lapply(VarImp4_AUC, function(x) sapply(seq_along(x), function(y) (x[y] - VarImp4_AUC_min[y])/ (VarImp4_AUC_max[y]-VarImp4_AUC_min[y])))
 
 
 
@@ -691,7 +762,7 @@ lower_sort = lower[order(VarImpDiff_AUC_relativesort)]
 VarImpDiff_AUC_samegenera = sort(VarImpDiff_AUC_relativesort)
 
 #Lepidoptera
-VarImpDiff_AUC = lapply(names(VarImp3_AUC), function(x) sapply(seq_along(VarImp3_AUC[[x]]), function(y) (VarImp3_AUC_Trans_rel[[x]][y] - VarImp_AUC_Trans_rel[[x]][y] )))  #x=varnames, y=seed 
+VarImpDiff_AUC = lapply(names(VarImp3_AUC), function(x) sapply(seq_along(VarImp3_AUC[[x]]), function(y) (VarImp3_AUC_Trans_rel[[x]][y] - VarImp_AUC_Trans_rel[[x]][y] )))  #x=varnames, y=seed
 names(VarImpDiff_AUC) = names(VarImp)
 
 VarImpDiff_AUC_CI = lapply(VarImpDiff_AUC, function(x) myCI(x))
@@ -707,7 +778,7 @@ lower_sort2 = lower[names(lower_sort)]
 VarImpDiff_AUC_Lepidoptera = VarImpDiff_AUC_relativesort[names(VarImpDiff_AUC_samegenera)]
 
 #insecta
-VarImpDiff_AUC = lapply(names(VarImp4_AUC), function(x) sapply(seq_along(VarImp4_AUC[[x]]), function(y) (VarImp4_AUC_Trans_rel[[x]][y] - VarImp_AUC_Trans_rel[[x]][y] )))  #x=varnames, y=seed 
+VarImpDiff_AUC = lapply(names(VarImp4_AUC), function(x) sapply(seq_along(VarImp4_AUC[[x]]), function(y) (VarImp4_AUC_Trans_rel[[x]][y] - VarImp_AUC_Trans_rel[[x]][y] )))  #x=varnames, y=seed
 names(VarImpDiff_AUC) = names(VarImp)
 
 VarImpDiff_AUC_CI = lapply(VarImpDiff_AUC, function(x) myCI(x))
@@ -723,26 +794,23 @@ lower_sort3 = lower[names(lower_sort)]
 VarImpDiff_AUC_Insecta = VarImpDiff_AUC_relativesort[names(VarImpDiff_AUC_samegenera)]
 
 #summary
-plotvalues = rbind(VarImpDiff_AUC_samegenera,VarImpDiff_AUC_Lepidoptera, VarImpDiff_AUC_Insecta)
-plotarrows_upper = rbind(upper_sort, upper_sort2, upper_sort3)
-plotarrows_lower = rbind(lower_sort, lower_sort2, lower_sort3)
+plotvalues = rbind(VarImpDiff_AUC_samegenera, VarImpDiff_AUC_Lepidoptera, VarImpDiff_AUC_Insecta) #
+plotarrows_upper = rbind(upper_sort, upper_sort2, upper_sort3) #
+plotarrows_lower = rbind(lower_sort, lower_sort2, lower_sort3) # 
 
 #plot
-testplot = barplot(VarImpDiff_AUC_samegenera, beside=T, horiz=T, las=1, xlim=c(-1.1, 1.1),  main="AUC", xpd=T, col=c("red", "purple", "orange"))
-arrows(upper_sort,testplot, lower_sort, testplot, angle=90, code=3, length=0.05)
-legend("bottomright", legend=c("same genera","Lepidoptera", "Insecta"),
-       col=c("red", "purple", "orange"), lty=1,lwd=2, cex=0.8, box.lty=0)
+tiff(paste("Output/Figure6",".tiff",sep=""), width = 100, height = 100, units = 'mm', res = 900, compression='lzw')
+par(mgp = c(2,1,0),mar=c(3,8,1.1,1.1))
+testplot = barplot(plotvalues, beside=T, horiz=T, las=1, cex.names=0.7, cex.labels=0.7, axes=F, xlim=c(-0.15, 0.4),  main="", xlab= "", xpd=T, col=c(brewer.pal(9,"Set1")[1], brewer.pal(9,"Set1")[4], brewer.pal(9,"Set1")[5])) 
+Axis(side=1, labels=T, line=0, padj=-1.7, cex.axis=0.7, cex=0.7)
+mtext(side=1, text="Relative importance", line=1.1, cex=0.7)
 
+arrows(plotarrows_upper,testplot, plotarrows_lower, testplot, angle=90, code=3, length=0.035)
 
-tiff(paste("Output/Figure5",".tiff",sep=""), width = 9, height = 6, units = 'in', res = 900, compression='lzw')
-par(mgp = c(2,0.5,0),mar=c(3,13,1.1,1.1))
-testplot = barplot(plotvalues, beside=T, horiz=T, las=1, xlim=c(-0.4, 0.15),  main="", xlab= "Change in relative importance", xpd=T, col=c("red", "purple", "orange"))
-arrows(plotarrows_upper,testplot, plotarrows_lower, testplot, angle=90, code=3, length=0.05)
-legend("topleft", legend=c("Same genera","Lepidoptera", "Insecta"),
-       col=c("red", "purple", "orange"), lty=1,lwd=2, cex=1, box.lty=0)
+legend(x=0.1,y=6, legend=c("Insecta","Lepidoptera", "Same genera"),
+       col=c(brewer.pal(9,"Set1")[5], brewer.pal(9,"Set1")[4], brewer.pal(9,"Set1")[1]), lty=1,lwd=2, cex=0.7, box.lty=0)
+
 dev.off()
-
-
 
 
 
@@ -758,402 +826,22 @@ corplotfunct(background_temp)
 dev.off()
 
 
-
 ####
-### Appendix S5
+### Appendix S5 and cdf values for in the discussion. 
 ####
-Ch3_densplotgenerator2 = function(variable, legend=F, customxlim=NA, density=F){
-  
-  variablemin = mins[variable]
-  variablemax = maxs[variable]
-  xrange = seq(variablemin, variablemax, length.out=512)
-  
-  ymax = 1*max(c(finalpresmod[[variable]](xrange),
-                 finalbackmod[[variable]](xrange),
-                 biasbackmodel[[variable]](xrange),
-                 biasbackmodel2[[variable]](xrange),
-                 biasbackmodel3[[variable]](xrange)
-  ))
-  
-  
-  #plottitle = nameconvertfunct3(variable)
-  xlab = unitconvertfunct(variable)
-  xlim = c(variablemin, variablemax)
-  
-  
-  if(legend==T){
-    ymax = 1.5*max(c(finalpresmod[[variable]](xrange),
-                     finalbackmod[[variable]](xrange),
-                     biasbackmodel[[variable]](xrange),
-                     biasbackmodel2[[variable]](xrange),
-                     biasbackmodel3[[variable]](xrange)
-    ))
-  }
-  
-  
-  if(!is.na(customxlim)){
-    xlim = customxlim
-  }
-  
-  ylab=""
-  
-  if(density==T){
-    ylab="Density"
-  }
-  
-  plotf = function(){
-    curve(finalpresmod[[variable]](x), xlim= xlim, ylim=c(0,ymax),ylab=ylab, xlab=xlab, axes=F,frame.plot=TRUE, col="green", lwd=2, lty=2)
-    Axis(side=1, labels=T)
-    curve(biasbackmodel[[variable]](x), col="red", lwd=2, add=T)
-    curve(biasbackmodel2[[variable]](x), col="purple", lwd=2, add=T) #lepidoptera
-    curve(biasbackmodel3[[variable]](x), col="orange", lwd=2, add=T) #insecta
-    curve(finalbackmod[[variable]](x), col="black", lwd=2, add=T)
-    
-    if(legend==T){
-      legend("topleft",  bty="n", cex=1,y.intersp=1.2, legend=c("Establishments", "Background"), col= c("green", "black"), lty=c(2,1), lwd=2)
-    }
-    #border = "", bg= "",
-  } 
-  return(plotf)
-}
 
 
-
-
-
-
-#appendix figure
-plot9 = Ch3_densplotgenerator2("BIO11", legend=T) 
-plot9 = as.grob(plot9)
-
-plot10 = Ch3_densplotgenerator("NrArp_D") 
-plot10 = as.grob(plot10)
-
-plot11 = Ch3_densplotgenerator("NrPrt_D") #Distance to n. port
-plot11 = as.grob(plot11)
-
-plot12 = Ch3_densplotgenerator("OrPlHa") #Ornamental plants cover
-plot12 = as.grob(plot12)
-
-plot13 = Ch3_densplotgenerator("ACrpHa") #Crop cover
-plot13 = as.grob(plot13)
-
-plot14 = Ch3_densplotgenerator2("SR") #Tree Species Richness
-plot14 = as.grob(plot14)
-
-plot15 = Ch3_densplotgenerator("GDPp") #GDP per capita
-plot15 = as.grob(plot15)
-
-plot16 = Ch3_densplotgenerator("BIO15") #Prec. seasonality
-plot16 = as.grob(plot16)
-
-plot17 = Ch3_densplotgenerator("AFrghtU") #Air freight
-plot17 = as.grob(plot17)
-
-tiff("Output/S5.tiff", width = 14, height = 8, units = 'in', res = 900, compression="lzw")
-plot = plot_grid(plot9, plot10, plot11, plot12, plot13, plot14, plot15, plot16, plot17,
-                 nrow=2, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
-                 labels = c(paste('A)', nameconvertfunct3("BIO11")),
-                            paste('B)', nameconvertfunct3("NrArp_D")),
-                            paste('C)', nameconvertfunct3("NrPrt_D")),
-                            paste('D)', nameconvertfunct3("OrPlHa")),
-                            paste('E)', nameconvertfunct3("ACrpHa")),
-                            paste('F)', nameconvertfunct3("SR")),
-                            paste('G)', nameconvertfunct3("GDPp")),
-                            paste('H)', nameconvertfunct3("BIO15")),
-                            paste('I)', nameconvertfunct3("AFrghtU"))
-                 )) 
-
-y.grob <- textGrob("Density", 
-                   gp=gpar(fontface="bold", col="blue", fontsize=12), rot=90)
-
-grid.arrange(arrangeGrob(plot, left = "Density"))
-dev.off()
-
-
-
-
-####
-### Appendix S6 and cdf values for in the discussion. 
-####
-BSDMapproxPKDE <- function(xnew, densityfunction, min, max){
-  
-  if(grepl("dnbinom", capture.output(print.function(densityfunction)))[1]==1){
-    zx = min:max
-    zy = densityfunction(zx)
-    total = sum(zy) #creates the mean prediction between x values. and sums. 
-    zy = zy/total
-    return(sapply(xnew,function(x)sum(zy[1:x])))
-  }
-  
-  zx = seq(from=min, to=max, length.out=1000)
-  zy = densityfunction(zx)
-  dx = diff(zx)[1] 
-  total = sum(rowMeans(cbind(zy[-1], zy[-length(zy)]))*dx) #creates the mean prediction between x values. and sums. 
-  cump = cumsum(rowMeans(cbind(zy[-1], zy[-length(zy)]))*dx)/total
-  approx(zx, c(0,cump), xnew, rule=2, ties="ordered")$y
-}
-
-###Distance to nearest city 
-xvals_NrCty_D=seq(mins["NrCty_D"],maxs["NrCty_D"],length.out=500)
-
-#Base model
-predfunct_NrCtyD_base = function(x){
-  
-  finalpresmod$NrCty_D(x) / finalbackmod$NrCty_D(x)
-  
-}
-
-predfunct_NrCtyD_base_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_base, min=0, max=max(xvals_NrCty_D))
-}
-
-
-#same genera model
-predfunct_NrCtyD_bias = function(x){
-  
-  value = finalpresmod$NrCty_D(x) / biasbackmodel$NrCty_D(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-predfunct_NrCtyD_bias_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias, min=0, max=max(xvals_NrCty_D))
-}
-
-#lepidoptera
-predfunct_NrCtyD_bias2 = function(x){
-  
-  value = finalpresmod$NrCty_D(x) / biasbackmodel2$NrCty_D(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-predfunct_NrCtyD_bias2_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias2, min=0, max=max(xvals_NrCty_D))
-}
-
-#insecta
-predfunct_NrCtyD_bias3 = function(x){
-  
-  value = finalpresmod$NrCty_D(x) / biasbackmodel3$NrCty_D(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-predfunct_NrCtyD_bias3_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias3, min=0, max=max(xvals_NrCty_D))
-}
-
-
-###Population density
-xvals_POPD=seq(mins["POPD"],maxs["POPD"],length.out=500)
-
-#Base model
-predfunct_POPD_base = function(x){
-  
-  finalpresmod$POPD(x) / finalbackmod$POPD(x)
-  
-}
-
-predfunct_POPD_base_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_POPD_base, min=min(xvals_POPD), max=max(xvals_POPD))
-}
-
-
-#same genera model
-predfunct_POPD_bias = function(x){
-  
-  value = finalpresmod$POPD(x) / biasbackmodel$POPD(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-
-predfunct_POPD_bias_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_POPD_bias, min=min(xvals_POPD), max=max(xvals_POPD))
-}
-
-#lepidoptera
-predfunct_POPD_bias2 = function(x){
-  
-  value = finalpresmod$POPD(x) / biasbackmodel2$POPD(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-predfunct_POPD_bias2_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_POPD_bias2, min=min(xvals_POPD), max=max(xvals_POPD))
-}
-
-#insecta
-predfunct_POPD_bias3 = function(x){
-  
-  value = finalpresmod$POPD(x) / biasbackmodel3$POPD(x)
-  value[!is.finite(value)] = 0
-  return(value)
-}
-
-predfunct_POPD_bias3_cdf2 = function(x){
-  BSDMapproxPKDE(xnew=x, densityfunction=predfunct_POPD_bias3, min=min(xvals_POPD), max=max(xvals_POPD))
-}
-
-
-#Figure S6
-plot1 = function(){
-  curve(predfunct_NrCtyD_base_cdf2(x), xlim=c(min(xvals_NrCty_D),200 ), col="green", lwd=2, lty=2, xlab="km", ylab="Cumulative probability") #max(xvals_NrCty_D)
-  curve(predfunct_NrCtyD_bias_cdf2(x),  col="red", lwd=2, add=T)
-  curve(predfunct_NrCtyD_bias2_cdf2(x),  col="purple", lwd=2, add=T)
-  curve(predfunct_NrCtyD_bias3_cdf2(x),  col="orange", lwd=2, add=T)
-  legend(x=120, y=0.2, legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
-       col=c("green", "red", "purple", "orange"), lty=c(2,1,1,1),lwd=2, cex=1, box.lty=0)
-}
-plot1 = as.grob(plot1)
-
-plot2 = function(){
-  curve(predfunct_POPD_base_cdf2(x), xlim=c(min(xvals_POPD),max(xvals_POPD)), col="green", lwd=2, xlab=expression(paste("ln(Inhabitants per ", km^2, " + 1)")), ylab="") #max(xvals_POPD)
-  curve(predfunct_POPD_bias_cdf2(x), col="red", lwd=2, add=T)
-  curve(predfunct_POPD_bias2_cdf2(x), col="purple", lwd=2, add=T)
-  curve(predfunct_POPD_bias3_cdf2(x), col="orange", lwd=2, add=T)
-}
-plot2 = as.grob(plot2)
-
-
-tiff("Output/S6.tiff", width = 10, height = 5, units = 'in', res = 900, compression="lzw") #
-par(mgp = c(1,0.5,0),mar=c(3,3,1.1,1.1))
-plot_grid(plot1, plot2, label_size = 12, axis='l',
-                 labels = c(paste('A)', nameconvertfunct3("NrCty_D")),
-                            paste('B)', nameconvertfunct3("POPD")))) 
-dev.off()
-
-###RM
-# predfunct_NrCtyD_base_cdf2(400) #0.8745522
-# predfunct_NrCtyD_bias_cdf2(400) #0.6775515
-# predfunct_NrCtyD_bias2_cdf2(450) #0.7992625
-# predfunct_NrCtyD_bias3_cdf2(400) #0.7394912
-# #NrCty_D limits = 0.040000000 #449.7300000
-# maxs
-# BSDMapproxPKDE(xnew=x, densityfunction=predfunct_NrCtyD_bias2, min=0, max=450)
-# 
-# finalpresmod$POPD(x)
-# finalbiasmod2$POPD
-# 
-# 
-# curve(predfunct_NrCtyD_base_cdf2(x), xlim=c(0,200 ), col="green", lwd=2, lty=2, xlab="km", ylab="Cumulative probability") #max(xvals_NrCty_D)
-# curve(predfunct_NrCtyD_bias_cdf2(x),  col="red", lwd=2, add=T)
-# curve(predfunct_NrCtyD_bias2_cdf2(x),  col="purple", lwd=2, add=T)
-# curve(predfunct_NrCtyD_bias3_cdf2(x),  col="orange", lwd=2, add=T)
-# legend(x=120, y=0.2, legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
-#        col=c("green", "red", "purple", "orange"), lty=c(2,1,1,1),lwd=2, cex=1, box.lty=0)
-# 
-# curve(predfunct_NrCtyD_base(x), xlim=c(0,450 ), col="green", lwd=2, lty=2, xlab="km", ylab="Relative probability") #max(xvals_NrCty_D)
-# curve(predfunct_NrCtyD_bias(x),  col="red", lwd=2, add=T)
-# curve(predfunct_NrCtyD_bias2(x),  col="purple", lwd=2, add=T)
-# curve(predfunct_NrCtyD_bias3(x),  col="orange", lwd=2, add=T)
-# legend("topright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
-#        col=c("green", "red", "purple", "orange"), lty=c(2,1,1,1),lwd=2, cex=1, box.lty=0)
-# 
-# 
-# curve(finalbackmod$NrCty_D(x), xlim=c(0,450))
-# 
-# predfunct_NrCtyD_bias2
-
-pres_nrctyd_cdf = function(x){
-  BSDMapproxPKDE(x, finalpresmod$NrCty_D, min=0, max=450)
-}
-
-back_nrctyd_cdf = function(x){
-  BSDMapproxPKDE(x, finalbackmod$NrCty_D, min=0, max=450)
-}
-
-bias_nrctyd_cdf = function(x){
-  BSDMapproxPKDE(x, biasbackmodel$NrCty_D, min=0, max=450)
-}
-
-bias2_nrctyd_cdf = function(x){
-  BSDMapproxPKDE(x, biasbackmodel2$NrCty_D, min=0, max=450)
-}
-
-bias3_nrctyd_cdf = function(x){
-  BSDMapproxPKDE(x, biasbackmodel3$NrCty_D, min=0, max=450)
-}
-#plots
-curve(pres_nrctyd_cdf(x), xlim=c(0,450), col="green", lwd=2)
-curve(back_nrctyd_cdf(x), xlim=c(0,450), add=T, col="grey", lwd=2)
-curve(bias_nrctyd_cdf(x), xlim=c(0,450), add=T, col="red", lwd=2)
-curve(bias2_nrctyd_cdf(x), xlim=c(0,450), add=T, col="purple", lwd=2)
-curve(bias3_nrctyd_cdf(x), xlim=c(0,450), add=T, col="orange", lwd=2)
-
-legend("bottomright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta", "background"),
-        col=c("green", "red", "purple", "orange", "grey"), lty=c(1,1,1,1),lwd=2, cex=1, box.lty=0)
-
-
-#taking marginal model predictions
-
-test = predfunct_NrCtyD_base(background$NrCty_D)
-test2 = predfunct_NrCtyD_bias(background$NrCty_D)
-test3 = predfunct_NrCtyD_bias2(background$NrCty_D)
-test4 = predfunct_NrCtyD_bias3(background$NrCty_D)
-
-sum_test = sum(test)
-sum_test2 = sum(test2)
-sum_test3 = sum(test3)
-
-sum(test[background$NrCty_D < 5] / sum_test) #0.2320198
-sum(test2[background$NrCty_D < 5] / sum_test2) #0.0657
-sum(test3[background$NrCty_D < 5] / sum_test3) #0.0935
-
-CalcProbMass_NrCty_D <- function(data, preds){
-  sumt = sum(preds)
-  xvals = seq(min(data),max(data),length.out=512)
-  yvals = sapply(xvals, function(x) sum( preds[data < x] / sumt))
-  return(function(val){approx(xvals, yvals, val, rule=2, ties="ordered")$y})
-}
-
-test_x = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test)
-test_x(5)
-
-test_xbias = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test2)
-test_xbias(5)
-
-test_xbias2 = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test3)
-test_xbias2(5)
-
-test_xbias3 = CalcProbMass_NrCty_D(data=background$NrCty_D, preds=test4)
-test_xbias3(5)
-
-curve(test_x, xlim=c(0,450), col="green", lwd=2)
-curve(test_xbias, add=T, col="red", lwd=2)
-curve(test_xbias2, add=T, col="purple", lwd=2)
-curve(test_xbias3, add=T, col="orange", lwd=2)
-legend("bottomright", legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
-       col=c("green", "red", "purple", "orange"), lty=c(1,1,1,1),lwd=2, cex=1, box.lty=0)
-
-CalcProbMass <- function(data, variable){
-  xvals=seq(mins[variable],maxs[variable],length.out=500)
-  sapply(xvals, function(x) sum(data$preds_scaled[st_drop_geometry(data[,variable]) < x],na.rm=T))
-}
-
-
-#probability mass - Distance to city
-xvals=seq(mins["NrCty_D"],maxs["NrCty_D"],length.out=500)
-
-pmass_base = CalcProbMass(background_base2, "NrCty_D")
-pmass_biasgenera = CalcProbMass(background_bias, "NrCty_D")
-pmass_biaslepidoptera = CalcProbMass(background_bias2, "NrCty_D")
-pmass_biasinsecta = CalcProbMass(background_bias3, "NrCty_D")
-
-
-
+#### Probmass full models
 #all data
 finalpresmod_preds = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod)
-finalpresmod_preds_samegenera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel)
-finalpresmod_preds_lepidoptera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel2)
-finalpresmod_preds_insecta = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=biasbackmodel3)
+finalpresmod_preds_samegenera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod2)
+finalpresmod_preds_lepidoptera = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod3)
+finalpresmod_preds_insecta = predictBsDM(data=st_drop_geometry(background_1m[,names(finalpresmod)]), presmod=finalpresmod, backmod=finalbackmod4)
+
 
 CalcProbMass_NrCty_D <- function(data, preds){
   sumt = sum(preds, na.rm=T)
-  xvals = seq(min(data),max(data),length.out=512)
+  xvals = seq(min(data,na.rm=T),max(data, na.rm=T),length.out=512)
   yvals = sapply(xvals, function(x) sum( preds[data < x] / sumt,na.rm=T))
   return(function(val){approx(xvals, yvals, val, rule=2, ties="ordered")$y})
 }
@@ -1164,102 +852,37 @@ probmass_full_samegenera = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, pr
 probmass_full_lepidoptera = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds_lepidoptera)
 probmass_full_insecta = CalcProbMass_NrCty_D(data = background_1m$NrCty_D, preds = finalpresmod_preds_insecta)
 
-curve(probmass_full_base(x),xlim=c(0,450), col="green")
-curve(probmass_full_samegenera(x),add=T, col="red")
-curve(probmass_full_lepidoptera(x),add=T, col="purple")
-curve(probmass_full_insecta(x),add=T, col="orange")
-
-curve(probmass_full_base(x),xlim=c(0,20), col="green")
-curve(probmass_full_samegenera(x),add=T, col="red")
-curve(probmass_full_lepidoptera(x),add=T, col="purple")
-curve(probmass_full_insecta(x),add=T, col="orange")
+probmass_full_base(10) #0.4455407 #10: 0.8591349
+probmass_full_samegenera(10) #0.3406788 #10: 0.6608197
+probmass_full_lepidoptera(10) #0.4067643 #10: 0.7730602
+probmass_full_insecta(10) #0.3466781 #10: 0.6703323
 
 
-probmass_full_base(5) #0.4949545
-probmass_full_samegenera(5) #0.4690233
-probmass_full_lepidoptera(5) #0.4090853
-probmass_full_insecta(5) #0.554302
-# ###/RM
+plot1 = function(){
+  curve(probmass_full_base(x),xlim=c(0,100), col=brewer.pal(9,"Set1")[3], lwd=2, lty=2, xlab="km", ylab="Cumulative probability")
+  curve(probmass_full_samegenera(x),add=T, col=brewer.pal(9,"Set1")[1], lwd=2, lty=3)
+  curve(probmass_full_lepidoptera(x),add=T, col=brewer.pal(9,"Set1")[4], lwd=2, lty=3)
+  curve(probmass_full_insecta(x),add=T, col=brewer.pal(9,"Set1")[5], lwd=2, lty=3)
+  legend(x=60, y=0.2, legend=c("no correction", "same genera", "Lepidoptera", "Insecta"),
+         col=c(brewer.pal(9,"Set1")[3], brewer.pal(9,"Set1")[1], brewer.pal(9,"Set1")[4], brewer.pal(9,"Set1")[5]), lty=c(2,3,3,3),lwd=2, cex=1, box.lty=0)
+  abline(v=10, col="darkgrey")
+  }  
+plot1 = as.grob(plot1) 
+
+plot2 = function(){
+plot(ecdf(background$NrCty_D), lwd=2, xlab="km", ylab="Cumulative probability", main="")
+abline(v=10, col="darkgrey")  
+abline(h=0.05, col="darkgrey")  
+}
+plot2 = as.grob(plot2)
+
+#integrate(finalbackmod$NrCty_D, lower=min(background$NrCty_D), upper=10)
+#0.0635
 
 
-
-#values distance to city
-predfunct_NrCtyD_base_cdf2(5) #0.376305
-predfunct_NrCtyD_bias_cdf2(5) #0.160753
-predfunct_NrCtyD_bias2_cdf2(5) #0.1683589
-predfunct_NrCtyD_bias3_cdf2(5) #0.3011999
-
-predfunct_NrCtyD_base_cdf2(50) #0.8745522
-predfunct_NrCtyD_bias_cdf2(50) #0.6775515
-predfunct_NrCtyD_bias2_cdf2(50) #0.7992625
-predfunct_NrCtyD_bias3_cdf2(50) #0.7394912
-
-#values population density
-predfunct_POPD_base_cdf2(6) #0.06407103
-predfunct_POPD_bias_cdf2(6) #0.1533739
-predfunct_POPD_bias2_cdf2(6) #0.04107063
-predfunct_POPD_bias3_cdf2(6) #0.1257292
-
-predfunct_POPD_base_cdf2(8) #0.4844523
-predfunct_POPD_bias_cdf2(8) #0.2801856
-predfunct_POPD_bias2_cdf2(8) #0.1101975
-predfunct_POPD_bias3_cdf2(8) #0.2422395
-
-predfunct_POPD_base_cdf2(9) #0.9171869 #exp(9.305929)-1
-predfunct_POPD_bias_cdf2(9) #0.619756
-predfunct_POPD_bias2_cdf2(9) #0.4678369
-predfunct_POPD_bias3_cdf2(9) #0.5906305
-
-
-
-
-
-
- 
-# ###
-# ### Miscellaneous figures
-# ###
-# 
-# #VarImp
-# time = Sys.time()
-# createVarImpPlot(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 50, prefix = "run7_sub1", origAUC = sub_perf[[2]], origNLLp = sub_perf[[1]]) #origAUC = subvarmodels[[2]][["AUC_mean"]], origNLLp = subvarmodels[[2]][["NLLp_mean"]]
-# Sys.time() - time
-# 
-# time = Sys.time()
-# createVarImpPlotAbsolute(varnames = subvarnames, presdata = reports[,subvarnames], backdata = background[,subvarnames], pmodel = subfinalpresmod, bmodel = subukde_back, repeats = 100, prefix = "run7_sub1_abs", origAUC = sub_perf[["auc"]], origNLLp = sub_perf[["logloss"]])
-# Sys.time() - time
-# 
-# 
-# ###Ecdf vs CDF plots
-# lapply(names(finalpresmod),function(x) plotAssessFit(data=reportssub, model=finalpresmod, alldata=suballdata, variable=x, prefix="run7_Rep_"))
-# lapply(names(finalpresmod),function(x) plotAssessFit(data=backgroundsub, model=finalbackmod, alldata=suballdata, variable=x, prefix="run7_Back_"))
-# 
-# ###Response plots
-# lapply(names(finalpresmod),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = subukde_back, alldata = suballdata, npres=274, prefix="run7_", cex=1))
-# #plotResponseCond
-# 
-# #assess fits of sampling models
-# lapply(names(sampfinalpresmod),function(x) plotAssessFit(data=samplessub, model=sampfinalpresmod, alldata=sampalldata, variable=x, prefix="run7_Samp_"))
-# lapply(names(sampfinalpresmod),function(x) plotResponseMarg(variable = x, presmod = sampfinalpresmod, backmod = sampukde_back, alldata = sampalldata, npres=52237, prefix="run7_Samp", cex=1))
-# 
-# #response
-# lapply(names(sampukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel, alldata = suballdata, npres=273, prefix="run7_BiasGenera", cex=1))
-# 
-# 
-# ###Lepidoptera model
-# #assess fits
-# lapply(names(lepidopterafinalpresmod),function(x) plotAssessFit(data=lepidopterasub, model=lepidopterafinalpresmod, alldata=lepidopteraalldata, variable=x, prefix="run7_lepidoptera_"))
-# lapply(names(lepidopterafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = lepidopterafinalpresmod, backmod = lepidopteraukde_back, alldata = lepidopteraalldata, npres=5612600, prefix="run7_lepidoptera", cex=1))
-# 
-# #response
-# lapply(names(lepidopteraukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel2, alldata = suballdata, npres=273, prefix="run7_Biaslepidoptera", cex=1))
-# 
-# 
-# ###Insecta model
-# #assess fits
-# lapply(names(insectafinalpresmod),function(x) plotAssessFit(data=insectasub, model=insectafinalpresmod, alldata=insectaalldata, variable=x, prefix="run7_insecta_"))
-# lapply(names(insectafinalpresmod),function(x) plotResponseMarg(variable = x, presmod = insectafinalpresmod, backmod = insectaukde_back, alldata = insectaalldata, npres=5612600, prefix="run7_insecta", cex=1))
-# 
-# #Insecta bias corrected
-# #response
-# lapply(names(insectaukde_back),function(x) plotResponseMarg(variable = x, presmod = finalpresmod, backmod = biasbackmodel3, alldata = suballdata, npres=273, prefix="run7_Biasinsecta", cex=1))
+tiff("Output/S5.tiff", width = 10, height = 5, units = 'in', res = 900, compression="lzw") #
+par(mgp = c(1,0.5,0),mar=c(3,3,1.1,1.1))
+plot_grid(plot1, plot2, label_size = 12, axis='l',
+          labels = c("(a) Probability mass",
+                     "(b) Distribution over Europe")) 
+dev.off()

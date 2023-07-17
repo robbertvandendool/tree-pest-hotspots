@@ -1,10 +1,8 @@
 ###### Functions script for the paper 'Introduction hotspots of non-native tree pests and the role of cities' by
 ###### Robbert T. van den Dool, Alejandro Morales, Wopke van der Werf & J.C. (Bob) Douma
-###### Last edited 9 March 2023 - Robbert T. van den Dool
+###### Last edited 17 July 2023 - Robbert T. van den Dool
 
 # This script contains all the code for the functions used in the other scripts. 
-
-
 
 
  
@@ -48,275 +46,7 @@ createpartitions <- function(data, ptrain, ptest, times, ptune=0){
 }
 
 
-# Fits distribution functions to variable data using likelihood. The alldata argument is used for the more complex distribution function 'SGT' to make sure that it covers the full domain of the variable.
-# Depending on the type of data, different functions are considered suitable.
 
-fitplusbounded <- function(data, alldata){ 
-  outputlist = list()
-  alldata = alldata
-  
-  f1 = MASS::fitdistr(x=data, densfun="normal", control = list(maxit = 2000))
-  outputlist = append(outputlist, list(normal = f1))
-  
-  if(sum(alldata < 0) == 0){ #right bounded 
-    f2 = MASS::fitdistr(x=data, densfun="exponential", control = list(maxit = 2000))
-    outputlist = append(outputlist, list(exponential = f2))
-  }
-  
-  if(sum(alldata == 0) == 0 && sum(alldata < 0) == 0){ #right bounded, above 0
-    f3 = MASS::fitdistr(x=data, densfun="weibull", control = list(maxit = 2000))
-    f4 = MASS::fitdistr(x=data, densfun="gamma", control = list(maxit = 2000))
-    f5 = MASS::fitdistr(x=data, densfun="lognormal", control = list(maxit = 2000))
-    outputlist =  append(outputlist, list(weibull=f3, gamma=f4, lognormal=f5))
-    
-    f6  = fitGB2(data, alldata)
-    if(!is.null(f6)){outputlist =  append(outputlist,list(GB2 = f6))}
-  }
-  
-  if(sum(alldata == 0) != 0 && sum(alldata < 0) == 0){ #right bounded, with 0
-    f7 = fitGB2ZI(data, alldata)
-    if(!is.null(f7)){outputlist =  append(outputlist, list(GB2ZI = f7))}
-  }
-  
-  if(sum(alldata%%1==0)==length(alldata)){ #integer 
-    f8 = MASS::fitdistr(x=data, densfun="negative binomial",control = list(maxit = 2000))
-    outputlist = append(outputlist, list(negativebinomial = f8))
-  }
-  
-  if(sum(alldata%%1==0)==length(alldata) && sum(alldata==0) != 0){ #integer with 0
-    f9 = fitNBZI(data) #
-    outputlist = append(outputlist, list(negativebinomialZI = f9))
-  }
-  
-  if(sum(alldata%%1==0)!= length(alldata) ){ #No integer data, not plusbounded #&& sum(alldata < 0) != 0
-    f10 = fitSGT(data, alldata)
-    outputlist = append(outputlist, list(SGT = f10))
-    }
-  
-  return(outputlist)
-}
-
-# This function returns the density depending on the functions fitted in fitplusbounded. It is used to determine predictive likelihood on tune and test sets for both function selection and performance evaluation. 
-# It checks which functions have been fitted and will calculate the densities. 
-# Returns a list with density of each available function 
-dfitplusbounded <-  function(data, functiondata, llog=FALSE) {
-  outputlist <- list()
-  
-  if(exists("normal",where=functiondata)){
-    f1 = functiondata$normal$estimate
-    p1 = dnorm(data, mean = f1[[1]], sd = f1[[2]] , log=llog)
-    outputlist = append(outputlist,list(normal=p1))
-  }
-  
-  if(exists("exponential",where=functiondata)){
-    f2 = functiondata$exponential$estimate
-    p2 = dexp(data, rate = f2[[1]], log=llog)
-    outputlist = append(outputlist,list(exponential=p2))
-  }
-  
-  if(exists("weibull",where=functiondata)){
-    f3 = functiondata$weibull$estimate
-    p3 = dweibull(data, shape = f3[[1]], scale = f3[[2]] , log=llog)
-    outputlist = append(outputlist,list(weibull=p3))
-  }
-  
-  if(exists("gamma",where=functiondata)){
-    f4 = functiondata$gamma$estimate
-    p4 = dgamma(data, shape = f4[[1]], rate = f4[[2]], log=llog)
-    outputlist = append(outputlist,list(gamma=p4))
-  }
-  
-  if(exists("lognormal",where=functiondata)){
-    f5 = functiondata$lognormal$estimate
-    p5 = dlnorm(data, meanlog = f5[[1]], sdlog = f5[[2]], log=llog)
-    outputlist = append(outputlist,list(lognormal=p5))
-  }
-  
-  if(exists("GB2",where=functiondata)){
-    f6 = functiondata$GB2$par 
-    p6 = dGB2(data, shape1=f6[[1]], scale=f6[[2]], shape2=f6[[3]], shape3=f6[[4]], log=llog)
-    outputlist = append(outputlist,list(GB2=p6))
-  }
-  
-  if(exists("GB2ZI",where=functiondata)){
-    f7 = functiondata$GB2ZI$par 
-    p7 = dGB2ZI(data, shape1=f7[[1]], scale=f7[[2]], shape2=f7[[3]], shape3=f7[[4]], zprob=f7[[5]], log=llog)
-    outputlist = append(outputlist,list(GB2ZI=p7))
-  }
-  
-  if(exists("negativebinomial",where=functiondata)){
-    f8 = functiondata$negativebinomial$estimate
-    p8 = dnbinom(data, size = f8[[1]], mu = f8[[2]] , log=llog)
-    outputlist = append(outputlist,list(negativebinomial=p8))
-  }
-  
-  if(exists("negativebinomialZI",where=functiondata)){
-    f9 = functiondata$negativebinomialZI$par
-    p9 = dnbinomZI(data, size = f9[[1]], mu = f9[[2]] , zprob = f9[[3]], log=llog)
-    outputlist = append(outputlist,list(negativebinomialZI=p9))
-  }
-  
-  if(exists("SGT",where=functiondata)){
-    f10 = functiondata$SGT$par
-    p10 = sgt::dsgt(data, mu = f10[[1]], sigma = f10[[2]], lambda = f10[[3]], p = f10[[4]], q = f10[[5]], log=llog)
-    outputlist = append(outputlist,list(SGT=p10))
-  }
-  return(outputlist)
-}
-
-
-# workhorse function that does a lot of work. runs both fitplusbounded on train data and dfitplusbounded on tune data.
-# prepares output for the 'getbest' function which will select the best function out of all fitted functions. 
-crossvalidatemarg <- function(data, variable, alldata){ #crossvalidatedata
-  
-  data = data
-  variable = variable
-  
-  alldata = alldata
-  
-  
-  #fit on train
-  trainedm =  lapply(data, function(x){
-    fitplusbounded(`[`(`[[`(x,"train"),,variable), alldata = alldata[,variable])
-  })
-
-  
-  tempnames = unique(unlist(  lapply(1:length(trainedm),function(x){names(unlist(lapply(trainedm[x][[1]], function(y){
-    as.data.frame(t(`[[`(y,1)))
-  })))})))
-  
-  templist = lapply(1:length(trainedm),function(x){
-    out = data.frame(t(as.data.frame(unlist(lapply(trainedm[x][[1]], function(y){
-      as.data.frame(t(`[[`(y,1)))
-    })))))
-    row.names(out)[1] = 1
-    return(out)
-  })
-  
-  params = do.call(rbind,
-                   lapply(templist,
-                          function(x) data.frame(c(x, sapply(setdiff(tempnames, names(x)),
-                                                             function(y) NA)))))
-  
-  
-  #predict on test
-  count = 0
-  
-  testpreds = lapply(data, function(x){
-    count <<- count + 1
-    dfitplusbounded(data = `[`(`[[`(x,"tune"),,variable), functiondata = trainedm[[count]], llog=TRUE) 
-  })
-  
-  
-  NLL = lapply(testpreds, function(x) as.data.frame(t(sapply(x, function(y){-sum(y)})))) 
-  
-  prednames = unique(unlist(lapply(NLL,names)))
-  
-
-  
-  NLLresults = do.call(rbind,
-                       lapply(NLL,
-                              function(x) data.frame(c(x, sapply(setdiff(prednames, names(x)),
-                                                                 function(y) NA)))))
-  
-
-  output = cbind(data.frame(id=1:length(data)), NLLresults, params)
-  
-  return(output)
-}
-
-# Determines the fitted function that had the best mean performance on all tune sets, thus over all iterations. (from crossvalidatemarg)
-# Then, it will return this function and its mean parameters.
-getbest = function(cvobj){
-  
-  NLLs =  as.data.frame(cvobj[,c(FALSE,!grepl(".", names(cvobj[,-1]), fixed = TRUE))]) 
-  names(NLLs) = names(cvobj)[c(FALSE,!grepl(".", names(cvobj[,-1]), fixed = TRUE))]
-  
-  if(is.null(NLLs)){return(0)}
-  NLLmeans = colMeans(NLLs)
-  minval = min(NLLmeans, na.rm=T)
-  best = names(which(NLLmeans == minval))
-  
-  if(best == "lognormal"){
-    meanlog = mean(cvobj[,"lognormal.meanlog"])
-    sdlog = mean(cvobj[,"lognormal.sdlog"])
-    dfunct <<-   function(x, log=F) dlnorm(x, meanlog = meanlog, sdlog = sdlog, log = log)
-    describ <<- c("lognormal"= minval, "meanlog" = meanlog, "sdlog" = sdlog)
-  }
-  
-  if(best == "exponential"){
-    rate = mean(cvobj[,"exponential.rate"])
-    dfunct <<- function(x, log=F) dexp(x, rate=rate, log = log)
-    describ <<- c("exponential"= minval, "rate" = rate)
-  }
-  
-  if(best == "weibull"){
-    shape = mean(cvobj[,"weibull.shape"])
-    scale = mean(cvobj[,"weibull.scale"])
-    dfunct <<- function(x, log=F) dweibull(x, shape=shape, scale=scale, log = log)
-    describ <<- c("weibull"= minval, "shape" = shape, "scale" = scale)
-  }
-  
-  if(best == "gamma"){
-    shape = mean(cvobj[,"gamma.shape"])
-    rate = mean(cvobj[,"gamma.rate"])
-    dfunct <<- function(x, log=F) dgamma(x, shape=shape, rate=rate, log = log)
-    describ <<- c("gamma"= minval, "shape" = shape, "rate" = rate)
-  }
-  
-  if(best == "negativebinomial"){
-    size = mean(cvobj[,"negativebinomial.size"])
-    mu = mean(cvobj[,"negativebinomial.mu"])
-    dfunct <<- function(x, log=F) dnbinom(x, size=size, mu=mu, log = log)
-    describ <<- c("negativebinomial"= minval, "size" = size, "mu" = mu)
-  }
-  
-  if(best == "normal"){
-    mean = mean(cvobj[,"normal.mean"])
-    sd = mean(cvobj[,"normal.sd"])
-    dfunct <<- function(x, log=F) dnorm(x, mean=mean, sd=sd, log = log)
-    describ <<- c("normal"= minval, "mean" = mean, "sd" = sd)
-  }
-  
-  if(best == "negativebinomialZI"){
-    size = mean(cvobj[,"negativebinomialZI.size"])
-    mu = mean(cvobj[,"negativebinomialZI.mu"])
-    zprob = mean(cvobj[,"negativebinomialZI.zprob"])
-    dfunct <<- function(x, log=F) dnbinomZI(x, size=size, mu=mu, zprob=zprob, log = log)
-    describ <<- c("negativebinomialZI"= minval, "size" = size, "mu" = mu, "zprob" = zprob)
-  }
-  
-  if(best == "GB2"){
-    shape1 = mean(cvobj[,"GB2.shape1"])
-    scale = mean(cvobj[,"GB2.scale"]) 
-    shape2 = mean(cvobj[,"GB2.shape2"])
-    shape3 = mean(cvobj[,"GB2.shape3"])
-    dfunct <<- function(x, log=F) dGB2(x, shape1 = shape1, scale = scale, shape2 = shape2, shape3 = shape3, log = log)
-    describ <<- c("GB2"= minval, "shape1" = shape1, "scale" = scale, "shape2" = shape2, "shape3" = shape3)
-  }
-  
-  if(best == "GB2ZI"){
-    shape1 = mean(cvobj[,"GB2ZI.shape1"])
-    scale = mean(cvobj[,"GB2ZI.scale"]) 
-    shape2 = mean(cvobj[,"GB2ZI.shape2"])
-    shape3 = mean(cvobj[,"GB2ZI.shape3"])
-    zprob = mean(cvobj[,"GB2ZI.zprob"])
-    dfunct <<- function(x, log=F) dGB2ZI(x, shape1 = shape1, scale = scale, shape2 = shape2, shape3 = shape3, zprob = zprob, log = log)
-    describ <<- c("GB2ZI"= minval, "shape1" = shape1, "scale" = scale, "shape2" = shape2, "shape3" = shape3, "zprob" = zprob)
-  }
-  
-  if(best == "SGT"){
-    mu = mean(cvobj[,"SGT.mu"])
-    sigma = mean(cvobj[,"SGT.sigma"]) 
-    lambda = mean(cvobj[,"SGT.lambda"])
-    p = mean(cvobj[,"SGT.p"])
-    q = mean(cvobj[,"SGT.q"])
-    dfunct <<- function(x, log=F) sgt::dsgt(x, mu = mu, sigma = sigma, lambda = lambda, p = p, q = q, log = log)
-    describ <<- c("SGT"= minval, "mu" = mu, "sigma" = sigma, "lambda" = lambda, "p" = p, "q" = q)
-  }
-  
-  return(list(dfunct, describ))
-}
 
 # Sub function used in variable permutation importance. Will randomly shuffle data for a variable and determine performance of a model on the new data.
 permutevar <- function(cvpresdata, backdata, model, nvars, variable){
@@ -349,16 +79,17 @@ permutevar <- function(cvpresdata, backdata, model, nvars, variable){
 # this led to default density functions with too high variance
 densapproxfactory <- function(data, min, max, adjust=1){
   
+  xvals = seq(min, max, length.out=512)
   bw = density(unique(as.numeric(row.names(table(data)))), bw = "SJ", weights=table((data))/length(data)) 
   kde = kdevine::kde1d(data, xmin = min, xmax = max, bw = bw$bw, mult = adjust)
-  kded = kdevine::dkde1d(data, kde)
+  kded = kdevine::dkde1d(xvals, kde)
+  kded[kded==0] = min(kded[kded>0]) #new line to prevent zero densities
   
-  combined = cbind(data, kded)
-  combined = combined[order(data),]
+  #combined = cbind(data, kded)
+  #combined = combined[order(data),]
   
   funct = function(x){
-    combined = combined
-    value = stats::approx(x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
+    value = stats::approx(x = xvals, y = kded, xout = x, rule = 2, ties = "ordered")$y #x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
     return(value)
   }
   
@@ -370,15 +101,17 @@ densapproxfactory <- function(data, min, max, adjust=1){
 # and with correction the bandwidth is estimated too high for a well fitting density function. 
 densapproxfactory_old <- function(data, min, max, adjust=1){
   
+  xvals = seq(min, max, length.out=512)
   kde = kdevine::kde1d(data, xmin = min, xmax = max, mult = adjust)
-  kded = kdevine::dkde1d(data, kde)
+  kded = kdevine::dkde1d(xvals, kde)
+  kded[kded==0] = min(kded[kded>0]) #new line to prevent zero densities.
   
-  combined = cbind(data, kded)
-  combined = combined[order(data),]
+  # combined = cbind(data, kded)
+  # combined = combined[order(data),]
   
   funct = function(x){
-    combined = combined
-    value = stats::approx(x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
+    #combined = combined
+    value = stats::approx(x = xvals, y = kded, xout = x, rule = 2, ties = "ordered")$y #x = combined[,1], y = combined[,2]
     return(value)
   }
   
@@ -415,14 +148,6 @@ predictunivdens = function(data,model){
   return(output)
 }
 
-
-
-
-
-#Creates presence models, using getbest on each partition
-createpresmodel = function(cvdatapartition){
-  model = lapply(cvdatapartition,function(x)getbest(x)[[1]])
-}
 
 #Predicts with the full BayeSDM model, given some data, a presence model and background model
 predictBsDM = function(data, presmod, backmod){
@@ -520,140 +245,12 @@ BSDM1varperf <- function(varname, pdata, bdata, alldata, backgroundmodels, ptrai
 }
 
 
-
-
 myCI = function(x, ci=0.95){
   a <- mean(x, na.rm=T)
   s <- sd(x, na.rm=T)
   n <- length(x[!is.na(x)])
   error <- qt(ci + (1 - ci)/2, df = n - 1) * s/sqrt(n)
   return(c(upper = a + error, mean = a, lower = a - error))
-}
-
-
-
-# function to create a final presence model, based on all holdout validation sets
-# here it is applied to a single variable
-# the most often best performing variable is selected and fitted to all data.
-
-fitfinalModelVar = function(cvdata1var, pdata1var, alldata){
-  
-  cvobj = cvdata1var
-  data = pdata1var
-  
-  NLLs =  as.data.frame(cvobj[,c(FALSE,!grepl(".", names(cvobj[,-1]), fixed = TRUE))]) 
-  names(NLLs) = names(cvobj)[c(FALSE,!grepl(".", names(cvobj[,-1]), fixed = TRUE))]
-  
-  
-  bests = lapply(1:nrow(cvobj), function(x){names(NLLs) [which(NLLs[x,] == min(NLLs[x,]))]})
-  freqs = table(unlist(bests))
-  freqmax = names(freqs) [which(freqs == max(freqs))]
-  
-  if(freqmax == "lognormal"){
-    
-    fit = MASS::fitdistr(x=data, densfun="lognormal")
-    
-    meanlog = fit$estimate[1]
-    sdlog =  fit$estimate[2]
-    
-    dfunct =   function(x, log=F) dlnorm(x, meanlog = meanlog, sdlog = sdlog, log = log)
-    
-  }
-  
-  if(freqmax == "exponential"){
-    
-    fit = MASS::fitdistr(x=data, densfun="exponential")
-    
-    rate = fit$estimate[1]
-    dfunct = function(x, log=F) dexp(x, rate=rate, log = log)
-    
-  }
-  
-  if(freqmax == "weibull"){
-    
-    fit = MASS::fitdistr(x=data, densfun="weibull")
-    shape = fit$estimate[1]
-    scale = fit$estimate[2]
-    dfunct = function(x, log=F) dweibull(x, shape=shape, scale=scale, log = log)
-    
-  }
-  
-  if(freqmax == "gamma"){
-    
-    fit = MASS::fitdistr(x=data, densfun="gamma")
-    shape = fit$estimate[1]
-    rate = fit$estimate[2]
-    dfunct = function(x, log=F) dgamma(x, shape=shape, rate=rate, log = log)
-    
-  }
-  
-  if(freqmax == "negativebinomial"){
-    
-    fit = MASS::fitdistr(x=data, densfun="negative binomial")
-    size = fit$estimate[1]
-    mu = fit$estimate[2]
-    dfunct = function(x, log=F) dnbinom(x, size=size, mu=mu, log = log)
-  }
-  
-  if(freqmax == "normal"){
-    
-    fit = MASS::fitdistr(x=data, densfun="normal")
-    mean = fit$estimate[1]
-    sd = fit$estimate[2]
-    dfunct = function(x, log=F) dnorm(x, mean=mean, sd=sd, log = log)
-  } 
-  
-  if(freqmax == "negativebinomialZI"){
-    
-    fit = fitNBZI(data)
-    size = fit$par[[1]]
-    mu = fit$par[[2]]
-    zprob = fit$par[[3]]
-    dfunct = function(x, log=F) dnbinomZI(x, size=size, mu=mu, zprob=zprob, log = log)
-  }
-  
-  if(freqmax == "GB2"){
-    
-    fit = fitGB2(data, alldata)
-    shape1 = fit$par[[1]]
-    scale = fit$par[[2]]
-    shape2 = fit$par[[3]]
-    shape3 = fit$par[[4]]
-    dfunct = function(x, log=F) dGB2(x, shape1=shape1, scale=scale, shape2=shape2, shape3=shape3, log=log)
-  }
-  
-  if(freqmax == "GB2ZI"){
-    
-    fit = fitGB2ZI(data, alldata)
-    shape1 = fit$par[[1]]
-    scale = fit$par[[2]]
-    shape2 = fit$par[[3]]
-    shape3 = fit$par[[4]]
-    zprob = fit$par[[5]]
-    dfunct = function(x, log=F) dGB2ZI(x, shape1=shape1, scale=scale, shape2=shape2, shape3=shape3, zprob=zprob, log=log)
-  }
-  
-  if(freqmax == "SGT"){
-    
-    fit = fitSGT(data, alldata)
-    mu = fit$par[[1]]
-    sigma = fit$par[[2]]
-    lambda = fit$par[[3]]
-    p = fit$par[[4]]
-    q = fit$par[[5]]
-    dfunct = function(x, log=F) sgt::dsgt(x, mu = mu, sigma = sigma, lambda = lambda, p = p, q = q, log=log)
-  }
-  
-  
-  return(dfunct)
-  
-}
-
-#Applies fitfinalModelVar to all variables
-fitfinalModel <- function(cvdata, pdata, alldata){
-  out =  lapply(names(cvdata), function(x){fitfinalModelVar(cvdata1var = cvdata[[x]], pdata1var = pdata[,x], alldata = alldata[,x])})
-  names(out) = names(cvdata)
-  return(out)
 }
 
 
@@ -693,11 +290,6 @@ permutevarFinal = function(presdata, backdata, pmodel, bmodel, variable, repeats
 
 
 
-
-
-
-
-
 BSDMapproxPKDE <- function(xnew, densityfunction, alldata, min, max ){
   
   if(grepl("dnbinom", capture.output(print.function(densityfunction)))[1]==1){
@@ -715,7 +307,6 @@ BSDMapproxPKDE <- function(xnew, densityfunction, alldata, min, max ){
   cump = cumsum(rowMeans(cbind(zy[-1], zy[-length(zy)]))*dx)/total
   approx(zx, c(0,cump), xnew, rule=2, ties="ordered")$y
 }
-
 
 
 
@@ -767,8 +358,6 @@ corplotfunct = function(data){
     theme(axis.text.x = element_text(angle = 45, vjust = 1, 
                                      size = 10, hjust = 1))+
     coord_fixed()
-  
-  
   
   reorder_cormat <- function(cormat){
     # Use correlation between variables as distance
@@ -995,307 +584,6 @@ createVarImpPlotAbsolute <- function(varnames, presdata, backdata, pmodel, bmode
 ### NEW DISTRIBUTION FUNCTIONS 
 #
 
-#SGT #Updated 28 Sep 2022
-fitSGT = function(data, alldata){
-  par = c(mu = mean(data), sigma = var(data), lambda = 0, p = 2, q = 100) #defaults: 0, 1, 0, 2, inf
-
-  min = min(alldata)
-  max = max(alldata)
-  
-  data = c(data, min, max)
-  
-  NLLfunct = function(data, par){
-    par1 = par[1]
-    par2 = par[2]
-    par3 = par[3]
-    par4 = par[4]
-    par5 = par[5]
-    
-    #minfit =  sgt::dsgt(min, mu = par1, sigma = par2, lambda = par3, p = par4, q = par5, log=T)
-    #maxfit =  sgt::dsgt(max, mu = par1, sigma = par2, lambda = par3, p = par4, q = par5, log=T)
-    
-    #if(is.na(minfit) || minfit == Inf || is.na(maxfit) || maxfit == Inf){return(NA)}
-    
-    return(-sum(sgt::dsgt(data, mu = par1, sigma = par2, lambda = par3, p = par4, q = par5, log=T)))
-  }
-  
-  opt_SGT = optim(data = data, fn=NLLfunct, par=par, control=list(maxit=2000)) 
-  return(opt_SGT)
-
-} #result includes Positive Log-Likelihood. # -> -result$maximum
-
-# dsgt(x, mu = result1$estimate[1],
-#      sigma = result1$estimate[2],
-#      lambda = result1$estimate[3],
-#      p = result1$estimate[4],
-#      q = result1$estimate[5])
-
-
-#GB2
-fitGB2 = function(data, alldata){
-  
-  min = min(alldata)
-  max = max(alldata)
-  data = c(data, min, max)
-  
-  temp = GB2::fisk(data)
-  par = c("shape1" = temp[1], "scale" = temp[2], "shape2" = temp[3], "shape3" = temp[4])
-  
-  NLLfunct = function(data, par){
-    par1 = par[1]
-    par2 = par[2]
-    par3 = par[3]
-    par4 = par[4]
-    #min = min
-    #max = max
-    
-    #minfit =  log(dGB2(min, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4))
-    #maxfit =  log(dGB2(max, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4))
-    
-    #if(is.na(minfit) || minfit == Inf || is.na(maxfit) || maxfit == Inf){return(NA)}
-    
-    return(-sum(log(dGB2(data, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4))))
-  }
-  
-  opt_gb2 = optim(data = data, fn=NLLfunct, par=par, control=list(maxit=2000)) 
-  return(opt_gb2)
-}
-
-dGB2 = function(x, shape1, scale, shape2, shape3, log=FALSE){
-    y <- (x/scale)^shape1
-    dy_dx <- (shape1/scale) * (x/scale)^(shape1 - 1)
-    z <- y/(1 + y)
-    z[z == 1] <- 1 - .Machine$double.eps
-    dz_dy <- (1 + y)^(-2)
-    dens <- dbeta(z, shape2, shape3) * dz_dy * dy_dx
-    v <- (x == Inf)
-    dens[v] <- 0
-    
-    if(log==TRUE){
-      dens = log(dens)
-    }
-    
-    return(dens)
-  }
-  
-#GB2 ZI
-
-dGB2ZI = function (x, shape1, scale, shape2, shape3, zprob, log=FALSE){
-  dens = ifelse(x==0, 
-                zprob + (1 - zprob) * GB2::dgb2(x, shape1, scale, shape2, shape3),
-                (1 - zprob) * GB2::dgb2(x, shape1, scale, shape2, shape3))
-  if(log==T) dens = log(dens)
-  return(dens)
-}
-
-pGB2ZI = function (q, shape1, scale, shape2, shape3, zprob) {
-  prob = zprob + (1-zprob)*GB2::pgb2(q, shape1, scale, shape2, shape3)
-  return(prob)
-}  
-
-fitGB2ZI = function(data, alldata){
-  
-  temp = GB2::fisk(data[which(data > 0)])
-  zerop = sum(data==0)/length(data)
-  if(zerop == 0) zerop=0.0001
-  par  = c(temp, zerop)
-  names(par) = c("shape1", "scale", "shape2", "shape3", "zprob")
-  min = min(alldata)
-  max = max(alldata)
-  
-  
-  NLLfunct = function(data, par){
-    par1 = par[1]
-    par2 = par[2]
-    par3 = par[3]
-    par4 = par[4]
-    par5 = par[5]
-    min = min
-    max = max
-    
-    minfit =  dGB2ZI(min, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4, zprob = par5, log=TRUE)
-    maxfit =  dGB2ZI(max, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4, zprob = par5, log=TRUE)
-    
-    if(is.na(minfit) || minfit == Inf || is.na(maxfit) || maxfit == Inf){return(NA)}
-    
-    return(-sum(dGB2ZI(data, shape1 = par1, scale = par2, shape2 = par3, shape3 = par4, zprob = par5, log=TRUE)))
-  }
-  
-  opt_NBZI = optim(data = data, fn=NLLfunct, par=par, control=list(maxit=5000))
-  return(opt_NBZI)
-}
-
-
-
-
-#NB-ZI
-dnbinomZI <- function (x, size, mu, zprob, log=FALSE){
-  dens = ifelse(x==0, 
-                zprob + (1 - zprob) * dnbinom(x=x, size=size, mu=mu),
-                (1 - zprob) * dnbinom(x, size=size, mu=mu))
-  if(log==T) dens = log(dens)
-  return(dens)
-}
-
-
-pnbinomZI <- function (q,  size, mu, zprob) {
-  prob = zprob + (1-zprob)*pnbinom(q=q, size=size, mu=mu)
-  return(prob)
-}
-
-initpars_dnbinomZI = function(data){
-  zprob = sum(data==0) / length(data)
-  m <- mean(data)
-  v <- var(data)
-  size <- if (v > m) 
-    m^2/(v - m)
-  else 100
-  start <- c(size = size, mu = m, zprob = zprob)
-  return(start)
-}
-
-fitNBZI = function(data){
-  
-  par = initpars_dnbinomZI(data)
-  
-  NLLfunct = function(data, par){
-    par1 = par[1]
-    par2 = par[2]
-    par3 = par[3]
-    
-    -sum(dnbinomZI(data, size = par1, mu = par2, zprob = par3, log=TRUE))
-  }
-  
-  opt_NBZI = optim(data = data, fn=NLLfunct, par=par, control=list(maxit=5000)) 
-  return(opt_NBZI)
-  
-}
- 
-###
-###add simple version of crossvalidatemarg and fitplusbounded
-crossvalidatemarg_simple = function(data, variable, alldata){ #crossvalidatedata
-  
-  data = data
-  variable = variable
-  
-  alldata = alldata
-  
-  
-  #fit on train
-  trainedm =  lapply(data, function(x){
-    fitplusbounded_simple(`[`(`[[`(x,"train"),,variable), alldata = alldata[,variable])
-  })
-  
-  # params = as.data.frame(t(sapply(trainedm,function(x){
-  #   unlist(lapply(x, function(y){
-  #     as.data.frame(t(`[[`(y,1)))
-  #   }))
-  # })))
-  
-  
-  tempnames = unique(unlist(  lapply(1:length(trainedm),function(x){names(unlist(lapply(trainedm[x][[1]], function(y){
-    as.data.frame(t(`[[`(y,1)))
-  })))})))
-  
-  templist = lapply(1:length(trainedm),function(x){
-    out = data.frame(t(as.data.frame(unlist(lapply(trainedm[x][[1]], function(y){
-      as.data.frame(t(`[[`(y,1)))
-    })))))
-    row.names(out)[1] = 1
-    return(out)
-  })
-  
-  params = do.call(rbind,
-                   lapply(templist,
-                          function(x) data.frame(c(x, sapply(setdiff(tempnames, names(x)),
-                                                             function(y) NA)))))
-  
-  # params = as.data.frame(t(as.data.frame(sapply(1:length(trainedm),function(x){
-  #   unlist(lapply(trainedm[x][[1]], function(y){
-  #     as.data.frame(t(`[[`(y,1)))
-  #   }))
-  # }))))
-  
-  #row.names(params) = c(1:length(data))
-  
-  #predict on test
-  count = 0
-  
-  testpreds = lapply(data, function(x){
-    count <<- count + 1
-    dfitplusbounded(data = `[`(`[[`(x,"test"),,variable), functiondata = trainedm[[count]], llog=TRUE)
-  })
-  
-  
-  NLL = lapply(testpreds, function(x) as.data.frame(t(sapply(x, function(y){-sum(y)})))) #this does what I want. 
-  
-  prednames = unique(unlist(lapply(NLL,names)))
-  
-  # tempnames = unique(unlist(  lapply(1:length(trainedm),function(x){names(unlist(lapply(trainedm[x][[1]], function(y){
-  #   as.data.frame(t(`[[`(y,1)))
-  # })))})))
-  
-  NLLresults = do.call(rbind,
-                       lapply(NLL,
-                              function(x) data.frame(c(x, sapply(setdiff(prednames, names(x)),
-                                                                 function(y) NA)))))
-  
-  # NLLresults <- as.data.frame(t(sapply(testpreds, sapply, function(x) -sum(x))))
-  
-  
-  output = cbind(data.frame(id=1:length(data)), NLLresults, params)
-  
-  return(output)
-}
-     
-
-fitplusbounded_simple = function(data, alldata){ #
-  outputlist = list()
-  alldata = alldata
-  
-  f1 = MASS::fitdistr(x=data, densfun="normal", control = list(maxit = 2000))
-  outputlist = append(outputlist, list(normal = f1))
-  
-  if(sum(alldata < 0) == 0){ #right bounded 
-    f2 = MASS::fitdistr(x=data, densfun="exponential", control = list(maxit = 2000))
-    outputlist = append(outputlist, list(exponential = f2))
-  }
-  
-  if(sum(alldata == 0) == 0 && sum(alldata < 0) == 0){ #right bounded, above 0
-    f3 = MASS::fitdistr(x=data, densfun="weibull", control = list(maxit = 2000))
-    f4 = MASS::fitdistr(x=data, densfun="gamma", control = list(maxit = 2000))
-    f5 = MASS::fitdistr(x=data, densfun="lognormal", control = list(maxit = 2000))
-    outputlist =  append(outputlist, list(weibull=f3, gamma=f4, lognormal=f5))
-    
-    # f6  = fitGB2(data, alldata)
-    # if(!is.null(f6)){outputlist =  append(outputlist,list(GB2 = f6))}
-  }
-  
-  # if(sum(alldata == 0) != 0 && sum(alldata < 0) == 0){ #right bounded, with 0
-  #   f7 = fitGB2ZI(data, alldata)
-  #   if(!is.null(f7)){outputlist =  append(outputlist, list(GB2ZI = f7))}
-  # }
-  
-  if(sum(alldata%%1==0)==length(alldata)){ #integer 
-    f8 = MASS::fitdistr(x=data, densfun="negative binomial",control = list(maxit = 2000))
-    outputlist = append(outputlist, list(negativebinomial = f8))
-  }
-  
-  # if(sum(alldata%%1==0)==length(alldata) && sum(alldata==0) != 0){ #integer with 0
-  #   f9 = fitNBZI(data) #
-  #   outputlist = append(outputlist, list(negativebinomialZI = f9))
-  # }
-  
-  # if(sum(alldata%%1==0)!= length(alldata) ){ #No integer data, not plusbounded #&& sum(alldata < 0) != 0
-  #   f10 = fitSGT(data, alldata)
-  #   outputlist = append(outputlist, list(SGT = f10))
-  # }
-  
-  return(outputlist)
-}    
-
-
-
 ########### VarImp difference 
 createVarImpPlotDifference <- function(varnames, presdata, backdata, pmodel, bmodel, bmodel2, repeats, prefix, origAUC, origNLLp, namestable){
   
@@ -1360,40 +648,241 @@ createVarImpPlotDifference <- function(varnames, presdata, backdata, pmodel, bmo
 }
 
 
-
-# #  
-# VarImp_AUC = lapply(VarImp, function(x) myCI(origAUC - x$AUC)) #how much is AUC higher with the variable not shuffled?
-# VarImp_AUC_min = min(sapply(VarImp_AUC, function(x)x[2]))
-# VarImp_AUC_max = max(sapply(VarImp_AUC, function(x)x[2]))
-# 
-# VarImp_AUC_sort = sapply(VarImp_AUC, function(x)x[2])
-# names(VarImp_AUC_sort) = names(VarImp)
-# 
-# upper =   sapply(VarImp_AUC, function(x)x[1])
-# upper_sort = upper[order(VarImp_AUC_sort)]
-# 
-# lower =   sapply(VarImp_AUC, function(x)x[3])
-# lower_sort = lower[order(VarImp_AUC_sort)]
-# 
-# VarImp_AUC_sort = sort(VarImp_AUC_sort)
-# 
-# name = paste(prefix,"_VPI_AUC",".tiff",sep="")
-# tiff(name, width = 4, height = 6, units = 'in', res = 600)
-# par(mgp = c(3,0.5,0),mar=c(2.1,11.1,1.1,1.1))
-# VPIplot = barplot(VarImp_AUC_sort, horiz=T, las=1, xlim=c(VarImp_AUC_min, VarImp_AUC_max),  main="AUC", xpd=T)
-# arrows(upper_sort,VPIplot, lower_sort, VPIplot, angle=90, code=3, length=0.05)
-# dev.off()
-
-
-
-getparfunction = function(y){
-  parnames = c("rate", "mu", "sigma", "lambda", "p", "q", "meanlog", "sdlog", "scale", "shape", "mean", "sd", "shape1", "shape2", "shape3", "zprob", "size")
-  sum(parnames %in%ls(environment(y)))
+densapproxfactory_botev =  function(data, min, max, log=FALSE, useweighted=FALSE){
+  
+  bw=NA
+  
+  if(useweighted){
+    bw = density(unique(as.numeric(row.names(table(data)))), bw = "SJ", weights=table((data))/length(data))$bw 
+  } #if useweighted is on, it will no longer use botev2010 to estimate the bandwidth. This will prevent severe overfitting in regional variables. 
+  
+  xvals = seq(min, max, length.out=512)
+  #bw = density(unique(as.numeric(row.names(table(data)))), bw = "SJ", weights=table((data))/length(data)) 
+  kde = provenance::KDE(x=data, from = min, to = max, bw=bw, adaptive=T)
+  #kded = kdevine::dkde1d(xvals, kde)
+  #kded[kded==0] = min(kded[kded>0]) #new line to prevent zero densities
+  
+  #combined = cbind(data, kded)
+  #combined = combined[order(data),]
+  
+  funct = function(x){
+    value = stats::approx(x = kde$x, y = kde$y, xout = x, rule = 2, ties = "ordered")$y #x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
+    return(value)
+  }
+  
+  return(funct)
+  
 }
 
-nparBayeSDM = function(presmodel){
-  sum(sapply(presmodel, function(x){getparfunction(x)}))
+BSDMapproxPKDE2 = function(densityfunction, min, max){
+  
+  if(grepl("dnbinom", capture.output(print.function(densityfunction)))[1]==1){
+    zx = min:max
+    zy = densityfunction(zx)
+    total = sum(zy) #creates the mean prediction between x values. and sums. 
+    zy = zy/total
+    return(sapply(xnew,function(x)sum(zy[1:x])))
+  }
+  
+  zx = seq(from=min, to=max, length.out=1000)
+  zy = densityfunction(zx)
+  dx = diff(zx)[1] 
+  total = sum(rowMeans(cbind(zy[-1], zy[-length(zy)]))*dx) #creates the mean prediction between x values. and sums. 
+  cump = cumsum(rowMeans(cbind(zy[-1], zy[-length(zy)]))*dx)/total
+  return(function(x){approx(zx, c(0,cump), x, rule=2, ties="ordered")$y})
+}
+
+densapproxfactory_botev_lb = function(data, min, max, useweighted=FALSE, adjust=1, lbmult=0.2){ #includes mirroring negative bounded kernels.
+  
+  if(useweighted){
+    bw = density(unique(as.numeric(row.names(table(data)))), bw = "SJ", weights=table((data))/length(data), adjust=adjust)$bw 
+  }else{bw=provenance::botev(data)*adjust} #if useweighted is on, it will no longer use botev2010 to estimate the bandwidth. This will prevent severe overfitting in regional variables. 
+  
+  lowbound = min-lbmult*(max-min)
+  #upperbound = max+0.1*(max-min)
+  
+  kde = provenance::KDE(x=data, from = lowbound, to= max , bw=bw, adaptive=T, n=ceiling(512*(1+lbmult))) #614
+  
+  negx = kde$x[kde$x < min] 
+  negy = kde$y[kde$x < min] 
+  newx = kde$x[kde$x >= min]
+  newy = kde$y[kde$x >= min]
+  newy[1:length(negx)] = newy[1:length(negx)] + rev(negy)
+  
+  dx = diff(kde$x)[1]
+  total = sum(rowMeans(cbind(kde$y[-1], kde$y[-length(kde$y)]))*dx)
+  newy = newy/total
+  
+  funct = function(x){
+    value = stats::approx(x = newx, y = newy, xout = x, rule = 2, ties = "ordered")$y #x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
+    return(value)
+  }
+  
+  return(funct)
+}
+
+makeplots = function(data, variable, useweighted=FALSE, adjust=1, lbmult=0.2){
+  
+  dat= data[,variable]
+  min= mins[variable]
+  max= maxs[variable]
+  
+  densfunct = densapproxfactory_botev_lb(data=dat, min=min, max=max, useweighted=useweighted, adjust=adjust, lbmult=lbmult)
+  densfunct_cdf = BSDMapproxPKDE2(densfunct,min=min, max=max)
+  
+  dens_plot = function(){
+    hist(data[,variable], xlim=c(min,max), main="", xlab=variable, prob=T, n=50)
+    curve(densfunct(x),add=T, col="red", lwd=2)
+  }
+  
+  ecdf_plot = function(){
+    plot(ecdf(data[,variable]),main="", xlab=variable, col="grey")
+    curve(densfunct_cdf,add=T, col="red",lwd=2)
+  }
+  
+  plot1 = as.grob(dens_plot)
+  plot2 = as.grob(ecdf_plot)
+  
+  tiff(paste("Output/Z2_plots_", variable, ".tiff"), width = 10, height = 5, units = 'in', res = 900, compression="lzw")
+  plot = plot_grid(plot1, plot2,
+                   nrow=1, label_size = 12, axis='l', hjust=0, label_x = 0.1, #align = "v", #axis = "b", #rel_widths = c(1), #label_x = .3, 
+                   labels = c(paste('A)', "density"),
+                              paste('B)', "cumulative probability")
+                   )) 
+  
+  grid.arrange(arrangeGrob(plot))
+  dev.off()
+}
+
+densapproxfactory_botev_lbrb = function(data, min, max, useweighted=FALSE, adjust=1, bmult=0.2){ #includes mirroring negative bounded kernels.
+  
+  if(useweighted){
+    bw = density(unique(as.numeric(row.names(table(data)))), bw = "SJ", weights=table((data))/length(data), adjust=adjust)$bw 
+  }else{bw=provenance::botev(data)*adjust} #if useweighted is on, it will no longer use botev2010 to estimate the bandwidth. This will prevent severe overfitting in regional variables. 
+  
+  lowbound = min-bmult*(max-min)
+  upperbound = max+bmult*(max-min)
+  
+  kde = provenance::KDE(x=data, from = lowbound, to= upperbound , bw=bw, adaptive=T, n=ceiling(512*(1+2*bmult))) #614
+  
+  negx = kde$x[kde$x < min] 
+  negy = kde$y[kde$x < min] 
+  newx = kde$x[kde$x >= min & kde$x <= max]
+  newy = kde$y[kde$x >= min & kde$x <= max]
+  newy[1:length(negx)] = newy[1:length(negx)] + rev(negy)
+  posx = kde$x[kde$x > max] 
+  posy = kde$y[kde$x > max] 
+  newy[(length(newx)-length(posx)+1):length(newx)] = rev(newy)[1:length(posx)] + posy
+  
+  dx = diff(kde$x)[1]
+  total = sum(rowMeans(cbind(kde$y[-1], kde$y[-length(kde$y)]))*dx)
+  newy = newy/total
+  
+  funct = function(x){
+    value = stats::approx(x = newx, y = newy, xout = x, rule = 2, ties = "ordered")$y #x = combined[,1], y = combined[,2], xout = x, rule = 2, ties = "ordered")$y
+    return(value)
+  }
+  
+  return(funct)
 }
 
 
+fitunivdens_pres = function(cvdata){
+  
+  ncols = ncol(data)
+  ukde_pres = vector(mode="list", length=0)
+  
+  ukde_pres$frstcv1 = densapproxfactory_botev_lb(cvdata$frstcv1, min=mins["frstcv1"], max=maxs["frstcv1"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO1 = densapproxfactory_botev_lb(cvdata$BIO1, min=mins["BIO1"], max=maxs["BIO1"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO2 = densapproxfactory_botev_lb(cvdata$BIO2, min=mins["BIO2"], max=maxs["BIO2"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO3 = densapproxfactory_botev_lb(cvdata$BIO3, min=mins["BIO3"], max=maxs["BIO3"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO4 = densapproxfactory_botev_lb(cvdata$BIO4, min=mins["BIO4"], max=maxs["BIO4"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO5 = densapproxfactory_botev_lb(cvdata$BIO5, min=mins["BIO5"], max=maxs["BIO5"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO6 = densapproxfactory_botev_lb(cvdata$BIO6, min=mins["BIO6"], max=maxs["BIO6"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO7 = densapproxfactory_botev_lb(cvdata$BIO7, min=mins["BIO7"], max=maxs["BIO7"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO8 = densapproxfactory_botev_lb(cvdata$BIO8, min=mins["BIO8"], max=maxs["BIO8"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO9 = densapproxfactory_botev_lb(cvdata$BIO9, min=mins["BIO9"], max=maxs["BIO9"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO10 = densapproxfactory_botev_lb(cvdata$BIO10, min=mins["BIO10"], max=maxs["BIO10"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO11 = densapproxfactory_botev_lb(cvdata$BIO11, min=mins["BIO11"], max=maxs["BIO11"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO12 = densapproxfactory_botev_lb(cvdata$BIO12, min=mins["BIO12"], max=maxs["BIO12"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO13 = densapproxfactory_botev_lb(cvdata$BIO13, min=mins["BIO13"], max=maxs["BIO13"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO14 = densapproxfactory_botev_lb(cvdata$BIO14, min=mins["BIO14"], max=maxs["BIO14"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO15 = densapproxfactory_botev_lb(cvdata$BIO15, min=mins["BIO15"], max=maxs["BIO15"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO16 = densapproxfactory_botev_lb(cvdata$BIO16, min=mins["BIO16"], max=maxs["BIO16"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO17 = densapproxfactory_botev_lb(cvdata$BIO17, min=mins["BIO17"], max=maxs["BIO17"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO18 = densapproxfactory_botev_lb(cvdata$BIO18, min=mins["BIO18"], max=maxs["BIO18"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$BIO19 = densapproxfactory_botev_lb(cvdata$BIO19, min=mins["BIO19"], max=maxs["BIO19"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$POPD = densapproxfactory_botev_lb(cvdata$POPD, min=mins["POPD"], max=maxs["POPD"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$ACrpHa = densapproxfactory_botev_lb(cvdata$ACrpHa, min=mins["ACrpHa"], max=maxs["ACrpHa"], useweighted=TRUE, adjust=1, lbmult=0.2)
+  ukde_pres$PCrpHa = densapproxfactory_botev_lb(cvdata$PCrpHa, min=mins["PCrpHa"], max=maxs["PCrpHa"], useweighted=TRUE, adjust=1, lbmult=0.2) #worst fit so far, but weird data
+  ukde_pres$NCrpHa = densapproxfactory_botev_lb(cvdata$NCrpHa, min=mins["NCrpHa"], max=maxs["NCrpHa"], useweighted=TRUE, adjust=1, lbmult=0.2) 
+  ukde_pres$OrPlHa = densapproxfactory_botev_lb(cvdata$OrPlHa, min=mins["OrPlHa"], max=maxs["OrPlHa"], useweighted=TRUE, adjust=1, lbmult=0.4) 
+  ukde_pres$GDP = densapproxfactory_botev_lb(cvdata$GDP, min=mins["GDP"], max=maxs["GDP"], useweighted=TRUE, adjust=1, lbmult=0.2) 
+  ukde_pres$GDPp = densapproxfactory_botev_lb(cvdata$GDPp, min=mins["GDPp"], max=maxs["GDPp"], useweighted=TRUE, adjust=1, lbmult=0.4) 
+  ukde_pres$MFrghtU = densapproxfactory_botev_lb(cvdata$MFrghtU, min=mins["MFrghtU"], max=maxs["MFrghtU"], useweighted=TRUE, adjust=1, lbmult=0.065) #complex fit, data highly irregular with zero inflation.  
+  ukde_pres$AFrghtU = densapproxfactory_botev_lb(cvdata$AFrghtU, min=mins["AFrghtU"], max=maxs["AFrghtU"], useweighted=TRUE, adjust=1, lbmult=0.065)  
+  ukde_pres$NrCty_D = densapproxfactory_botev_lb(cvdata$NrCty_D, min=mins["NrCty_D"], max=maxs["NrCty_D"], useweighted=TRUE, adjust=3, lbmult=0.2)   #was 3, leftbound was not accurate
+  ukde_pres$NrPrt_F = densapproxfactory_botev_lb(cvdata$NrPrt_F, min=mins["NrPrt_F"], max=maxs["NrPrt_F"], useweighted=TRUE, adjust=1, lbmult=0.2)  
+  ukde_pres$NrPrt_D = densapproxfactory_botev_lb(cvdata$NrPrt_D, min=mins["NrPrt_D"], max=maxs["NrPrt_D"], useweighted=TRUE, adjust=3, lbmult=0.2)   #was 3
+  ukde_pres$NrArp_D = densapproxfactory_botev_lb(cvdata$NrArp_D, min=mins["NrArp_D"], max=maxs["NrArp_D"], useweighted=TRUE, adjust=3, lbmult=0.2)   #was 3
+  ukde_pres$SR = densapproxfactory_botev_lb(cvdata$SR, min=mins["SR"], max=maxs["SR"], useweighted=TRUE, adjust=1, lbmult=0.01)  
+  ukde_pres$Tourism = densapproxfactory_botev_lb(cvdata$Tourism, min=mins["Tourism"], max=maxs["Tourism"], useweighted=TRUE, adjust=1, lbmult=0.01)  
+  ukde_pres$WoodUnits = densapproxfactory_botev_lb(cvdata$WoodUnits, min=mins["WoodUnits"], max=maxs["WoodUnits"], useweighted=TRUE, adjust=1, lbmult=0.2)  
+  ukde_pres$WoodEmploy = densapproxfactory_botev_lb(cvdata$WoodEmploy, min=mins["WoodEmploy"], max=maxs["WoodEmploy"], useweighted=TRUE, adjust=1, lbmult=0.2)  
+  ukde_pres$runif = densapproxfactory_botev_lbrb(data=cvdata$runif, min=mins["runif"], max=maxs["runif"], useweighted=T, adjust=1, bmult=0.2)
+  
+  return(ukde_pres)
+} 
+predictBsDM2 = function(data, presmod, backmod){
+  presdens = predictunivdens2(data, model=presmod)
+  backdens = predictunivdens2(data, model=backmod)
+  prob = presdens/backdens
+  return(prob)
+}
 
+predictunivdens2 = function(data,model){ 
+  
+  nvar = length(model)
+  denslist = vector(mode="list", length=nvar)
+  
+  denslist = lapply(names(model), function(i){ #was:  seq_len(nvar)
+    model[[i]](data[,i])}
+  )
+  
+  output = Reduce("*", denslist) 
+  
+  return(output)
+}
+
+modelperf2 = function(pcvdata, bdata, presmodels, backmodel, variablenames){
+  
+  nrrep = length(pcvdata)  
+  
+  output1 = data.frame("NLLp" = rep(0,nrrep), "AUC" = rep(0, nrrep))  
+  output2 = c("NLLp_upper" = 0, "NLLp_mean" = 0, "NLLp_lower" = 0, "AUC_upper" = 0, "AUC_mean" = 0, "AUC_lower" = 0)
+  
+  for  (i in seq_along(pcvdata)){
+    
+    pmod = presmodels[[i]][variablenames]
+    bmod = backmodel[variablenames]
+    
+    pprob = predictBsDM2(data = pcvdata[[i]]$test, presmod = pmod, backmod = bmod)
+    bprob = predictBsDM2(data = bdata, presmod = pmod, backmod = bmod)
+    pprob[is.infinite(pprob)] = NA #check for infinite values sometimes occuring on runif for GB2
+    bprob[is.infinite(bprob)] = NA
+    
+    psummed = sum(pprob, na.rm=T) + sum(bprob, na.rm=T)
+    pprobscaled = pprob / psummed
+    
+    logloss = -sum(log(pprobscaled))
+    auc = pROC::auc(response = c(rep(1, length(pprob)), rep(0, length(bprob))), predictor = c(pprob, bprob), quiet=TRUE, na.rm=TRUE) 
+    output1[i,] = c(logloss, auc)
+  }
+  
+  output2[1:3] =as.numeric(myCI(output1$NLLp, ci=0.95)) #was mean(output1$NLLp)
+  output2[4:6] = as.numeric(myCI(output1$AUC, ci=0.95))
+  output = list(output1, output2)
+  
+  return(output)
+  
+}
